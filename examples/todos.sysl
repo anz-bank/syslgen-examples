@@ -1,0 +1,31 @@
+Todos:
+  !type Todo:
+    userId <: int
+    id <: int
+    title <: string
+    completed <: bool
+
+  !type Post:
+    userId <: int
+    id <: int
+    title <: string
+    body <: string
+
+  !alias Posts:
+    sequence of Post
+
+  /todos:
+    /{id<:int}:
+      GET:
+        return Todo
+
+  /posts:
+    GET:
+      return Posts
+
+  /comments:
+    GET ?postId=int:
+      return Posts
+      
+    POST (newPost <: Post):
+      return Post

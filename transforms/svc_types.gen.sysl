@@ -1,0 +1,339 @@
+CodeGenTransform:
+  !view IsKeyword(word <: string) -> bool:
+    word -> (:
+      out = word in {"break", "default","func","interface","select","case","defer","go","map","struct","chan","else","goto","package","switch","const","fallthrough","if","range","type","continue","for","import","return","var"}
+    )
+  !view GetGoField(word <: string) -> string:
+    word -> (:
+      let wordUpper = ToTitle(word)
+      # Common initialisms https://github.com/golang/lint/blob/8f45f776aaf18cebc8d65861cc70c33c60471952/lint.go#L771
+      out = if (wordUpper in {"ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"}) == true then wordUpper else Title(ToLower(word))
+    )
+
+  !view GoType(t <: sysl.Type) -> string:
+    t -> (:
+      out = if t.type ==:
+        "primitive" => if t.primitive ==:
+          "DECIMAL" => "double"
+          "INT" => "int64"
+          "FLOAT" => "float64"
+          "STRING" => "string"
+          "STRING_8" => "string"
+          "BOOL" => "bool"
+        "sequence" => "[]" + GoType(t.sequence).out
+        else "*" + t.type_ref
+    )
+
+  !view filename(app <: sysl.App) -> string:
+    app -> (:
+      filename =  "service.go"
+    )
+
+  !view GoStructFields(fields <: set of Type) -> sequence of FieldDecl:
+    fields -> (field:
+      let fieldName = GetGoField(field.key).out
+      identifier = fieldName
+
+      let IsPtr = if field.value.optional == true then "*" else ""
+      let fieldTag = '`json:"' + ToLower(fieldName)
+      Tag = if field.value.optional == true then (fieldTag + ',omitempty"`') else (fieldTag + '"`')
+      Type = IsPtr + GoType(field.value).out
+    )
+
+  !view GoStructs(types <: set of Type) -> sequence of TopLevelDecl:
+    types -> (type:
+        Comment = '// ' + type.key + ' ...'
+        Declaration = type -> <Declaration>(:
+          StructType = type -> <StructType>(:
+            StructName = .key
+            FieldDecl = GoStructFields(.value.fields)
+          )
+        )
+    )
+
+  !view GoInterfaces(unions <: set of Type) -> sequence of TopLevelDecl:
+    unions -> (union:
+        Comment = '// ' + union.key + ' ...'
+        Declaration = union -> <Declaration>(:
+          InterfaceType = union -> <InterfaceType>(:
+            InterfaceName = .key
+            let methodName = "Is" + .key
+            MethodSpec = [methodName] -> <sequence of MethodSpec> (name:
+              MethodName = name
+              Signature = "" -> <Signature> (:
+                Parameters = true
+              )
+            )
+            MethodDecl = union.value.fields -> <sequence of MethodDecl> (receiverName:
+              Receiver = receiverName -> <Receiver>(:
+                ReceiverType = "*" + receiverName
+              )
+              FunctionName = methodName
+              Signature = receiverName -> <Signature> (:
+                Parameters = true
+              )
+              Block = receiverName -> <Block> (:
+                out = ""
+              )
+            )
+          )
+        )
+    )
+
+  !view methodName(method <: string, urlPath <: string) -> string:
+    method -> (:
+      let path = Replace(urlPath, "/", "_", -1)
+      let path2 = Replace(path, "{", "", -1)
+      let path3 = Replace(path2, "}", "", -1)
+      out = method + path3
+    )
+
+  !view clientName(name <: string) -> string:
+    name -> (:
+      out = Title(ToLower(name)) + "Client"
+    )
+
+  !view formatArgs(ep <: sysl.Endpoint) -> string:
+    ep -> (:
+      let queryvarsFmt = ep.value.queryvars -> <string>(:
+        out = .name + '=' + "%v"
+      )
+      queryVars = Join(queryvarsFmt flatten(.out), "&")
+      let terms = ep.value.pathvars -> <out> (:
+        out = "{" + .name + "}"
+      )
+      let terms2 = terms flatten(.out)
+      let path = Split(ep.value.path, "/")
+      let path2 = path -> <string> (p:
+        out  = if p in terms2 then "%v" else p
+      )
+      out = path2 flatten(.out)
+    )
+
+  !view createOutVariable(typeName <: string) -> DeclareAndAssignStmt:
+    typeName -> (:
+      Statement = typeName -> <Statement> (:
+        DeclareAndAssignStmt = typeName -> <DeclareAndAssignStmt> (:
+          Variables = "out"
+          Statement = typeName -> <Statement> (:
+            NewStruct = typeName -> <Statement> (:
+              StructName = typeName
+            )
+          )
+        )
+      )
+    )
+  
+  !view buildSprintfCall(ep <: sysl.Endpoint) -> string:
+    ep -> (:
+      let args = formatArgs(ep)
+      let q = if Contains(args.queryVars, "=") then "?" + args.queryVars else ""
+      let path = '"%s' + Join(args.out, "/") + q + '"'
+      let urlVar = "s.url" -> <name> (:
+        name = .
+      )
+      let pathvars = [urlVar] | ep.value.pathvars | ep.value.queryvars
+      let params = pathvars -> <string> (:
+        out = .name
+      )
+      doSprintf = "fmt.Sprintf(" + Join([path] | params flatten(.out), ",") + ")"
+    )
+
+  !view callDoGet(ep <: string) -> DeclareAndAssignStmt:
+    ep -> (:
+      Statement = ep -> <Statement> (:
+        DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
+          Variables = "err"
+          Statement = ep -> <Statement> (:
+            FunctionCall = ep -> <FunctionCall>(:
+              FunctionName = "restlib.DoGet"
+              FunctionArgs =  Join([buildSprintfCall(ep).doSprintf, "&out"], ",")
+            )
+          )
+        )
+      )   
+    )
+
+  !view callDoPost(ep <: string) -> DeclareAndAssignStmt:
+    ep -> (:
+      Statement = ep -> <Statement> (:
+        DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
+          Variables = "err"
+          Statement = ep -> <Statement> (:
+            FunctionCall = ep -> <FunctionCall>(:
+              FunctionName = "restlib.DoPost"
+              let args = [buildSprintfCall(ep).doSprintf] | ep.value.params flatten(.name) | ["out"]
+              FunctionArgs =  Join(args, ",")
+            )
+          )
+        )
+      )   
+    )
+
+  !view returnOutAndErr(name <: string) -> DeclareAndAssignStmt:
+    name -> (:
+      Statement = name -> <Statement> (:
+        ReturnStmt = name -> <ReturnStmt> (:
+          PayLoad = Join([name, "err"], ",")
+        )
+      )   
+    )
+
+  !view GetMethodStatments(ep <: sysl.Endpoint) -> StatementList:
+    ep -> (:
+      StatementList = [createOutVariable(ep.value.ret.payload), callDoGet(ep), returnOutAndErr("out")]
+    )
+
+  !view PostMethodStatments(ep <: sysl.Endpoint) -> StatementList:
+    ep -> (:
+      StatementList = [createOutVariable(ep.value.ret.payload), callDoPost(ep), returnOutAndErr("out")]
+    )
+
+  !view ClientMethods(appName <: string, eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
+    eps -> (ep:
+      let funcName = methodName(ep.value.method, ep.value.path).out
+      Comment = '// ' + funcName + ' ...'
+      MethodDecl = ep -> <MethodDecl>(:
+        Receiver = ep -> <Receiver>(:
+          ReceiverType = 's *' + clientName(appName).out
+        )
+        FunctionName = funcName
+        Signature = methodSignature(ep)
+        Block = if ep.value.method ==:
+          "GET" => GetMethodStatments(ep)
+          "POST" => PostMethodStatments(ep)
+          else true
+      )
+    )
+
+  !view methodSignature(ep <: sysl.Endpoint) -> Signature:
+    ep -> (:
+      Parameters = ep -> <Parameters>(:
+        ParameterList = ep -> <ParameterList>(:
+          ParameterDecl = ep -> <ParameterDecl>(:
+            Identifier = "ctx"
+            TypeName = "context.Context"
+          )
+          let paramList = ep.value.params | ep.value.pathvars | ep.value.queryvars
+          ParameterDeclC = paramList -> <ParameterDeclC>(p:
+            ParameterDecl = p -> <ParameterDecl>(:
+              Identifier = p.name
+              TypeName = GoType(p).out
+            )
+          )
+        )
+      )
+      Result = ep -> <Result> (:
+        ReturnTypes = ep -> <ReturnTypes> (:
+          ResultTypeList = ep -> <ResultTypeList>(:
+            TypeName = ep.value.ret.payload
+          )
+        )
+      )
+
+    )
+
+  !view GoMethods(eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
+    eps -> (ep:
+      MethodName = methodName(ep.value.method, ep.value.path).out
+      Signature = methodSignature(ep)
+    )
+
+  !view GoAlias(aliases <: set of sysl.Types) -> sequence of Declaration:
+    aliases -> (alias:
+      Comment = '// ' + alias.key + ' ...'
+      Declaration = alias -> <Declaration>(:
+        AliasDecl = alias -> <AliasDecl>(:
+          identifier = .key
+          Type = GoType(.value).out
+        )
+      )
+    )
+
+  !view goFile(app <: sysl.App) -> string:
+    app -> (:
+
+      PackageClause = .name -> <package> (name:
+        PackageName = "main"
+      )
+
+      ImportDecl = app -> <ImportDecl>(:
+        ImportSpec = ["../lib", "context", "fmt", "net/http"] -> <ImportSpec> (importPath:
+          Import = '"' + importPath + '"'
+        )
+      )
+
+      let svcInterface = [.name] -> <TopLevelDecl> (name:
+        Comment = '// ' + name + ' ...'
+        Declaration = name -> <Declaration>(:
+          InterfaceType = name -> <InterfaceType>(:
+            InterfaceName = name
+            MethodSpec =  GoMethods(app.endpoints)
+          )
+        )
+      )
+      
+      let clientStruct = [.name] -> <TopLevelDecl> (name:
+        Comment = '// ' + clientName(name).out + ' ...'
+        Declaration = name -> <Declaration>(:
+          StructType = name -> <StructType>(:
+            StructName = clientName(name).out
+
+            let urlField = name -> <FieldDecl>(:
+              identifier = "url"
+              Type = "string"
+            )
+
+            let client = name -> <FieldDecl>(:
+              identifier = "client"
+              Type = "*http.Client"
+            )
+
+            FieldDecl = [client, urlField]
+          )
+        )
+      )
+
+      let makeClient = [.name] -> <TopLevelDecl> (name:
+        Comment = '// ' + "Make" + clientName(name).out + ' ...'
+        FunctionDecl = name -> <FunctionDecl>(:
+          FunctionName = "Make" + clientName(name).out
+          Signature = name -> <Signature> (:
+            Parameters = name -> <Parameters>(:
+              ParameterList = name -> <ParameterList>(:
+
+                let urlField = name -> <ParameterDecl>(:
+                    Identifier = "url"
+                    TypeName = "string"
+                )
+
+                ParameterDecl = name -> <ParameterDecl>(:
+                  Identifier = "client"
+                  TypeName = "*http.Client"
+                )
+                ParameterDeclC = [urlField] -> <ParameterDeclC>(p:
+                  ParameterDecl = p -> <ParameterDecl>(:
+                    Identifier = p.Identifier
+                    TypeName = p.TypeName
+                  )
+                )
+              )
+            )
+
+            Result = name -> <Result> (:
+              TypeName = "*"+clientName(name).out
+            )
+          )
+          Block = name -> <Block>(item:
+            StatementList = [item] -> <StatementList>(item:
+              Statement = item -> <Statement> (:
+                ReturnStmt = item -> <ReturnStmt> (:
+                  PayLoad = '&' + clientName(name).out + '{client, url}'
+                )
+              )
+            )
+          )
+        )
+      )
+      TopLevelDecl = GoStructs(app.types) | GoAlias(app.alias) | GoInterfaces(app.union) | svcInterface | clientStruct |  makeClient  |  ClientMethods(.name, app.endpoints)
+    )
