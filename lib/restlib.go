@@ -2,6 +2,7 @@ package restlib
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -22,7 +23,7 @@ func interpretResponse(resp *http.Response, res interface{}) error {
 }
 
 // DoPost does the http POST call
-func DoPost(url string, request interface{}, response interface{}) error {
+func DoPost(ctx context.Context, url string, request interface{}, response interface{}) error {
 	reqJson, err := json.Marshal(request)
 	reader := bytes.NewReader(reqJson)
 	resp, err := http.Post(url, "application/json", reader)
@@ -33,7 +34,7 @@ func DoPost(url string, request interface{}, response interface{}) error {
 }
 
 // DoGet does the http GET call
-func DoGet(url string, res interface{}) error {
+func DoGet(ctx context.Context, url string, res interface{}) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		panic(err)

@@ -147,7 +147,7 @@ CodeGenTransform:
           Statement = ep -> <Statement> (:
             FunctionCall = ep -> <FunctionCall>(:
               FunctionName = "restlib.DoGet"
-              FunctionArgs =  Join([buildSprintfCall(ep).doSprintf, "&out"], ",")
+              FunctionArgs =  Join(["ctx", buildSprintfCall(ep).doSprintf, "&out"], ",")
             )
           )
         )
@@ -162,7 +162,7 @@ CodeGenTransform:
           Statement = ep -> <Statement> (:
             FunctionCall = ep -> <FunctionCall>(:
               FunctionName = "restlib.DoPost"
-              let args = [buildSprintfCall(ep).doSprintf] | ep.value.params flatten(.name) | ["out"]
+              let args = ["ctx", buildSprintfCall(ep).doSprintf] | ep.value.params flatten(.name) | ["out"]
               FunctionArgs =  Join(args, ",")
             )
           )

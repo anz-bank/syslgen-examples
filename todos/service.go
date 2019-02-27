@@ -48,27 +48,27 @@ func MakeTodosClient(client *http.Client, url string) *TodosClient {
 // GET_comments ...
 func (s *TodosClient) GET_comments(ctx context.Context, postId int64) (Posts, error) {
 	out := Posts{}
-	err := restlib.DoGet(fmt.Sprintf("%s/comments?postId=%v", s.url, postId), &out)
+	err := restlib.DoGet(ctx, fmt.Sprintf("%s/comments?postId=%v", s.url, postId), &out)
 	return out, err
 }
 
 // GET_posts ...
 func (s *TodosClient) GET_posts(ctx context.Context) (Posts, error) {
 	out := Posts{}
-	err := restlib.DoGet(fmt.Sprintf("%s/posts", s.url), &out)
+	err := restlib.DoGet(ctx, fmt.Sprintf("%s/posts", s.url), &out)
 	return out, err
 }
 
 // GET_todos_id ...
 func (s *TodosClient) GET_todos_id(ctx context.Context, id int64) (Todo, error) {
 	out := Todo{}
-	err := restlib.DoGet(fmt.Sprintf("%s/todos/%v", s.url, id), &out)
+	err := restlib.DoGet(ctx, fmt.Sprintf("%s/todos/%v", s.url, id), &out)
 	return out, err
 }
 
 // POST_comments ...
 func (s *TodosClient) POST_comments(ctx context.Context, newPost *Post) (Post, error) {
 	out := Post{}
-	err := restlib.DoPost(fmt.Sprintf("%s/comments", s.url), newPost, out)
+	err := restlib.DoPost(ctx, fmt.Sprintf("%s/comments", s.url), newPost, out)
 	return out, err
 }
