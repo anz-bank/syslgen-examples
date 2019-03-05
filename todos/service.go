@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // Post ...
@@ -24,14 +25,14 @@ type Todo struct {
 }
 
 // Posts ...
-type Posts []*Post
+type Posts []Post
 
 // Todos ...
 type Todos interface {
-	GET_comments(ctx context.Context, postId int64) (Posts, error)
-	GET_posts(ctx context.Context) (Posts, error)
-	GET_todos_id(ctx context.Context, id int64) (Todo, error)
-	POST_comments(ctx context.Context, newPost *Post) (Post, error)
+	GET_comments(ctx context.Context, headers map[string]string, postId string) (*restlib.HttpResult, error)
+	GET_posts(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error)
+	GET_todos_id(ctx context.Context, headers map[string]string, id int64) (*restlib.HttpResult, error)
+	POST_comments(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error)
 }
 
 // TodosClient ...
@@ -46,29 +47,29 @@ func MakeTodosClient(client *http.Client, url string) *TodosClient {
 }
 
 // GET_comments ...
-func (s *TodosClient) GET_comments(ctx context.Context, postId int64) (Posts, error) {
-	out := Posts{}
-	err := restlib.DoGet(ctx, fmt.Sprintf("%s/comments?postId=%v", s.url, postId), &out)
-	return out, err
+func (s *TodosClient) GET_comments(ctx context.Context, headers map[string]string, postId string) (*restlib.HttpResult, error) {
+	required := []string{}
+	responses := []interface{}{&Posts{}}
+	return restlib.DoHttpRequest(s.client, ctx, "GET", fmt.Sprintf("%s/comments?postId=%v", s.url, url.QueryEscape(postId)), nil, headers, required, responses)
 }
 
 // GET_posts ...
-func (s *TodosClient) GET_posts(ctx context.Context) (Posts, error) {
-	out := Posts{}
-	err := restlib.DoGet(ctx, fmt.Sprintf("%s/posts", s.url), &out)
-	return out, err
+func (s *TodosClient) GET_posts(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error) {
+	required := []string{}
+	responses := []interface{}{&Posts{}}
+	return restlib.DoHttpRequest(s.client, ctx, "GET", fmt.Sprintf("%s/posts", s.url), nil, headers, required, responses)
 }
 
 // GET_todos_id ...
-func (s *TodosClient) GET_todos_id(ctx context.Context, id int64) (Todo, error) {
-	out := Todo{}
-	err := restlib.DoGet(ctx, fmt.Sprintf("%s/todos/%v", s.url, id), &out)
-	return out, err
+func (s *TodosClient) GET_todos_id(ctx context.Context, headers map[string]string, id int64) (*restlib.HttpResult, error) {
+	required := []string{}
+	responses := []interface{}{&Todo{}}
+	return restlib.DoHttpRequest(s.client, ctx, "GET", fmt.Sprintf("%s/todos/%v", s.url, id), nil, headers, required, responses)
 }
 
 // POST_comments ...
-func (s *TodosClient) POST_comments(ctx context.Context, newPost *Post) (Post, error) {
-	out := Post{}
-	err := restlib.DoPost(ctx, fmt.Sprintf("%s/comments", s.url), newPost, out)
-	return out, err
+func (s *TodosClient) POST_comments(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error) {
+	required := []string{}
+	responses := []interface{}{&Post{}}
+	return restlib.DoHttpRequest(s.client, ctx, "POST", fmt.Sprintf("%s/comments", s.url), nil, headers, required, responses)
 }

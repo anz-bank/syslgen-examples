@@ -18,7 +18,7 @@ FunctionDecl   : 'func' FunctionName Signature? Block? ;
 Signature: Parameters Result?;
 Parameters: '(' ParameterList? ')';
 Result         : ReturnTypes | TypeName;
-ReturnTypes: '(' ResultTypeList 'error' ')';
+ReturnTypes: '(' ResultTypeList* ')';
 ResultTypeList: TypeName ',';
 TypeList:  TypeName;
 ParameterList     : ParameterDecl ParameterDeclC*;
@@ -32,10 +32,22 @@ Receiver: '(' ReceiverType ')';
 
 Block: '{\n' StatementList* '}\n\n';
 StatementList: Statement ';\n';
-Statement: ReturnStmt | FunctionCall | DeclareAndAssignStmt | NewStruct;
-ReturnStmt: 'return' (PayLoad | FunctionCall);
-FunctionCall: FunctionName '(' FunctionArgs? ')';
-DeclareAndAssignStmt: Variables ':=' Statement;
-NewStruct: StructName '{}';
+Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt ;
+
+AssignStmt: Variables '=' Expression;
+
+ReturnStmt: 'return' (PayLoad | Expression);
+DeclareAndAssignStmt: Variables ':=' Expression;
 AliasDecl: 'type' identifier Type? ';\n\n';
 
+Expression: FunctionCall | NewStruct | GetArg |  ValueExpr | NewSlice;
+
+GetArg: LHS '.' RHS;
+
+NewSlice: '[]' TypeName '{' SliceValues? '}';
+
+FunctionCall: FunctionName '(' FunctionArgs? ')';
+FunctionArgs: Expression FuncArgsRest*;
+FuncArgsRest: ',' Expression;
+
+NewStruct: StructName '{}';

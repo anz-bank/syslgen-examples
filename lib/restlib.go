@@ -4,40 +4,75 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
-func interpretResponse(resp *http.Response, res interface{}) error {
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(body, res)
-	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
-	}
-	return err
+// HttpResult is the result return by the library
+type HttpResult struct {
+	HttpResponse *http.Response
+	Body         []byte
+	Response     interface{}
 }
 
-// DoPost does the http POST call
-func DoPost(ctx context.Context, url string, request interface{}, response interface{}) error {
-	reqJson, err := json.Marshal(request)
-	reader := bytes.NewReader(reqJson)
-	resp, err := http.Post(url, "application/json", reader)
-	if err != nil {
-		panic(err)
+func makeHttpResult(res *http.Response, body []byte, resp interface{}) *HttpResult {
+	return &HttpResult{
+		HttpResponse: res,
+		Body:         body,
+		Response:     resp,
 	}
-	return interpretResponse(resp, response)
 }
 
-// DoGet does the http GET call
-func DoGet(ctx context.Context, url string, res interface{}) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		panic(err)
+// DoHttpRequest returns HttpResult
+// with HttpResult.httpResponse.Body set to nil
+func DoHttpRequest(client *http.Client, ctx context.Context, method string, urlString string, body interface{}, headers map[string]string, required []string, response []interface{}) (*HttpResult, error) {
+	var reader io.Reader
+	var err error
+
+	// Validations 1:
+	// If we have body, marshal it to json
+	if body != nil {
+		reqJson, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		reader = bytes.NewReader(reqJson)
 	}
-	return interpretResponse(resp, res)
+
+	// Validations 2:
+	// if we have required headers, see if they have been passed to us
+	for _, key := range required {
+		if _, has := headers[key]; !has {
+			return nil, errors.Errorf("Missing Required header: %s", key)
+		}
+	}
+
+	httpRequest, err := http.NewRequest(method, urlString, reader)
+
+	for key, val := range headers {
+		httpRequest.Header.Add(key, val)
+	}
+
+	httpResponse, err := client.Do(httpRequest.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	defer httpResponse.Body.Close()
+
+	respBody, err := ioutil.ReadAll(httpResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, respInterface := range response {
+		err = json.Unmarshal(respBody, respInterface)
+		if err == nil {
+			return makeHttpResult(httpResponse, respBody, respInterface), nil
+		}
+	}
+	return makeHttpResult(httpResponse, respBody, nil), nil
 }
