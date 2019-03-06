@@ -21,6 +21,7 @@ CodeGenTransform:
           "STRING" => "string"
           "STRING_8" => "string"
           "BOOL" => "bool"
+          "DATE" => "string"
         "sequence" => "[]" + GoType(t.sequence).out
         else t.type_ref
       out = IsPtr + typeName
