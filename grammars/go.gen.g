@@ -29,28 +29,23 @@ InterfaceType      : 'type' InterfaceName 'interface'  '{\n'  MethodSpec* '}\n\n
 MethodSpec         : '\t' MethodName Signature '\n' | InterfaceTypeName ;
 MethodDecl: 'func' Receiver FunctionName Signature? Block? '\n';
 Receiver: '(' ReceiverType ')';
+AliasDecl: 'type' identifier Type? ';\n\n';
 
 Block: '{\n' StatementList* '}\n\n';
 StatementList: Statement ';\n';
-Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt;
-
-IfElseStmt: 'if' Expression Block?;
+Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt | FunctionCall;
 
 AssignStmt: Variables '=' Expression;
+IfElseStmt: 'if' Expression Block;
 IncrementVarByStmt: Variables '+=' Expression;
-
 ReturnStmt: 'return' (PayLoad | Expression);
 DeclareAndAssignStmt: Variables ':=' Expression;
-AliasDecl: 'type' identifier Type? ';\n\n';
 
 Expression: FunctionCall | NewStruct | GetArg |  ValueExpr | NewSlice;
 
 GetArg: LHS '.' RHS;
-// GetItemFromMap: MapVar '[' ']'
 NewSlice: '[]' TypeName '{' SliceValues? '}';
-
 FunctionCall: FunctionName '(' FunctionArgs? ')';
 FunctionArgs: Expression FuncArgsRest*;
 FuncArgsRest: ',' Expression;
-
 NewStruct: StructName '{}';

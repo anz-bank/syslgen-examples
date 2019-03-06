@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/http/httptrace"
@@ -21,13 +20,7 @@ func withTrace(context context.Context) context.Context {
 }
 
 func main() {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	httpClient := http.Client{
-		Transport: tr,
-	}
-
+	httpClient := http.Client{}
 	client := MakeTodosClient(&httpClient, "http://jsonplaceholder.typicode.com")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

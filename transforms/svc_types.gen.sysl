@@ -94,41 +94,6 @@ CodeGenTransform:
       out = Title(ToLower(name)) + "Client"
     )
 
-  !view formatArgs(ep <: sysl.Endpoint) -> string:
-    ep -> (:
-      # let queryvarsFmt = ep.value.queryvars -> <string>(:
-      #   out = .name + '=' + "%v"
-      # )
-      # queryVars = Join(queryvarsFmt flatten(.out), "&")
-      let terms = ep.value.pathvars -> <out> (:
-        out = "{" + .name + "}"
-      )
-      let terms2 = terms flatten(.out)
-      let path = Split(ep.value.path, "/")
-      let path2 = path -> <string> (p:
-        out  = if p in terms2 then "%v" else p
-      )
-      let path3 = path2 flatten(.out)
-      formatArgs = '"%s' + Join(path3, "/") + '"'
-    )
-
-  !view urlVariable(ep <: sysl.Endpoint) -> DeclareAndAssignStmt:
-    ep -> (:
-      Statement = ep -> <Statement> (:
-        DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
-          Variables = "url"
-          let sprintfArg = formatArgs(ep).formatArgs
-          let params = ep.value.pathvars -> <string> (:
-            Expression =  makeValueExpr(.name).Expression
-          )
-
-          let restArg = [makeGetArgExpr("s", "url")] | params
-
-          Expression = makeFunctionCall("fmt.Sprintf", makeValueExpr(sprintfArg), restArg).Expression
-        )
-      )
-    )
-
   !view makeGetArgExpr(lhs <: string, rhs <: string) -> Expression:
     lhs -> (:
       Expression = lhs -> <Expression>(:
@@ -181,7 +146,38 @@ CodeGenTransform:
         )
       )
     )
-    
+
+  !view formatArgs(ep <: sysl.Endpoint) -> string:
+    ep -> (:
+      let terms = ep.value.pathvars -> <out> (:
+        out = "{" + .name + "}"
+      )
+      let terms2 = terms flatten(.out)
+      let path = Split(ep.value.path, "/")
+      let path2 = path -> <string> (p:
+        out  = if p in terms2 then "%v" else p
+      )
+      let path3 = path2 flatten(.out)
+      formatArgs = '"%s' + Join(path3, "/") + '"'
+    )
+
+  !view urlVariable(ep <: sysl.Endpoint) -> DeclareAndAssignStmt:
+    ep -> (:
+      Statement = ep -> <Statement> (:
+        DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
+          Variables = "u, err"
+          let sprintfArg = formatArgs(ep).formatArgs
+          let params = ep.value.pathvars -> <string> (:
+            Expression =  makeValueExpr(.name).Expression
+          )
+          let restArg = [makeGetArgExpr("s", "url")] | params
+          let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr(sprintfArg), restArg)
+          Expression = makeFunctionOneArg("url.Parse", sprintfCall).Expression
+
+        )
+      )
+    )
+
   !view callRestLib(ep <: string) -> DeclareAndAssignStmt:
     ep -> (:
       Statement = ep -> <Statement> (:
@@ -196,8 +192,7 @@ CodeGenTransform:
           )
 
           let body2 = if body count == 0 then [nilExpr] else body
-
-          let restofArgs = [makeValueExpr("ctx"), makeValueExpr('"' + ep.value.method + '"'), makeValueExpr("url")] | body2 | [makeValueExpr("headers"), makeValueExpr("required") , makeValueExpr("responses")]
+          let restofArgs = [makeValueExpr("ctx"), makeValueExpr('"' + ep.value.method + '"'), makeFunctionZero("u.String")] | body2 | [makeValueExpr("headers"), makeValueExpr("required") , makeValueExpr("responses")]
 
           Expression =  makeFunctionCall("restlib.DoHttpRequest", makeGetArgExpr("s", "client"), restofArgs).Expression
         )
@@ -279,16 +274,53 @@ CodeGenTransform:
     ep.value.queryvars where (.optional == true) -> (qparam:
       Statement = qparam -> <Statement> (:
         IfElseStmt = qparam -> <IfElseStmt> (:
-          Expression = makeValueExpr(.name + " != null").Expression
+          Expression = makeValueExpr(.name + " != nil").Expression
           Block = qparam -> <Block> (:
-            StatementList = qparam -> <StatementList> (:
-              Statement = qparam -> <Statement> (:
-                IncrementVarByStmt = qparam -> <IncrementVarByStmt>(:
-                  Variables = "url"
-                  Expression = if .type == "STRING" then "*" + .name else .name
-                )
-              )
+            let stmt = qparam -> <StatementList> (:
+              let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr("*" + .name)])
+              Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + .name + '"'), [sprintfCall]).Expression
             )
+            StatementList = [stmt]
+          )
+        )
+      )
+    )
+
+  !view declareQueryVar(name <: string) -> StatementList:
+    name -> (:
+      Statement = name -> <Statement> (:
+        DeclareAndAssignStmt = name -> <DeclareAndAssignStmt> (:
+          Variables = name
+          Expression = makeFunctionZero("u.Query").Expression
+        )
+      )
+    )
+
+  !view updateRawQuery(name <: string) -> StatementList:
+    name -> (:
+      Statement = name -> <Statement> (:
+        AssignStmt = name -> <AssignStmt> (:
+          Variables = "u.RawQuery"
+          Expression = makeFunctionZero("q.Encode").Expression
+        )
+      )
+    )
+  
+  !view returnIfError(argName <: string, returnVar <: string) -> StatementList:
+    argName -> (:
+      Statement = argName -> <Statement> (:
+        IfElseStmt = argName -> <IfElseStmt> (:
+          Expression = makeValueExpr(argName + " != nil").Expression
+          Block = returnVar -> <Block> (:
+            let stmt = returnVar -> <StatementList> (:
+              Statement = returnVar -> <Statement> (:
+                ReturnStmt = returnVar -> <ReturnStmt> (:
+                  PayLoad = returnVar
+                )
+              )   
+
+            )
+            StatementList = [stmt]
           )
         )
       )
@@ -298,14 +330,9 @@ CodeGenTransform:
     ep -> (:
       let requiredHeaders = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns)
       let required = declareHeaders("required", "string", requiredHeaders flatten(.attrs.name))
-
-      # let optionalHeaders = ep.value.params where("header" in .attrs.patterns && "optional" in .attrs.patterns)
-      # let optional = declareHeaders("optional", "string", optionalHeaders flatten(.attrs.name))
-
       let responses = declareReturnTypeArray("responses", "interface{}", Split(ep.value.ret.payload, ', '))
 
-      StatementList =  [urlVariable(ep), required, responses, callRestLib(ep)]
-      # StatementList = [urlVariable(ep)] | addQueryParams(ep) | [ required, responses, callRestLib(ep)] 
+      StatementList =  [required, responses, urlVariable(ep), returnIfError("err", "nil, err"), declareQueryVar("q")] | addQueryParams(ep) | [updateRawQuery("") , callRestLib(ep)]
     )
 
   !view ClientMethods(appName <: string, eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
@@ -383,7 +410,7 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        ImportSpec = ["../lib", "context", "fmt", "net/http"] -> <ImportSpec> (importPath:
+        ImportSpec = ["../lib", "context", "fmt", "net/http", "net/url"] -> <ImportSpec> (importPath:
           Import = '"' + importPath + '"'
         )
       )
