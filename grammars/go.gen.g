@@ -32,9 +32,12 @@ Receiver: '(' ReceiverType ')';
 
 Block: '{\n' StatementList* '}\n\n';
 StatementList: Statement ';\n';
-Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt ;
+Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt;
+
+IfElseStmt: 'if' Expression Block?;
 
 AssignStmt: Variables '=' Expression;
+IncrementVarByStmt: Variables '+=' Expression;
 
 ReturnStmt: 'return' (PayLoad | Expression);
 DeclareAndAssignStmt: Variables ':=' Expression;
@@ -43,7 +46,7 @@ AliasDecl: 'type' identifier Type? ';\n\n';
 Expression: FunctionCall | NewStruct | GetArg |  ValueExpr | NewSlice;
 
 GetArg: LHS '.' RHS;
-
+// GetItemFromMap: MapVar '[' ']'
 NewSlice: '[]' TypeName '{' SliceValues? '}';
 
 FunctionCall: FunctionName '(' FunctionArgs? ')';

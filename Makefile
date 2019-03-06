@@ -1,5 +1,5 @@
 .PHONY: all
-all: todos
+all: todos apiconnect
 
 SYSLGEN=$(PWD)/syslgen
 REST_TRANSFORM = transforms/svc_interface.gen.sysl
@@ -10,10 +10,15 @@ REST_TRANSFORM_INPUT = $(REST_TRANSFORM) $(GRAMMAR)
 TYPES_TRANSFORM_INPUT = $(TYPES_TRANSFORM) $(GRAMMAR)
 
 todos: todos/todos
+apiconnect: apiconnect/apiconnect
 
 todos/todos: todos/service.go
 	-rm todos/todos
 	cd todos; go build -o todos; cd -
+
+apiconnect/apiconnect: apiconnect/service.go
+	-rm apiconnect/apiconnect
+	cd apiconnect; go build -o apiconnect; cd -
 
 %/service.go: examples/%.sysl $(TYPES_TRANSFORM_INPUT) %/main.go
 	echo "creating output dir" $*
