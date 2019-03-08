@@ -21,8 +21,10 @@ CodeGenTransform:
           "STRING" => "string"
           "STRING_8" => "string"
           "BOOL" => "bool"
+          "DATE" => "date.Date"
+          "DATETIME" => "time.Time"
         "sequence" => "[]" + GoType(t.sequence).out
-        else t.type_ref
+        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then Trim(t.type_ref, "EXTERNAL_") else t.type_ref
       out = IsPtr + typeName
     )
 
@@ -36,7 +38,7 @@ CodeGenTransform:
       let fieldName = GetGoField(field.key).out
       identifier = fieldName
 
-      let fieldTag = '`json:"' + ToLower(fieldName)
+      let fieldTag = '`json:"' + ToLower(field.key)
       Tag = if field.value.optional == true then (fieldTag + ',omitempty"`') else (fieldTag + '"`')
       Type = GoType(field.value).out
     )
@@ -349,6 +351,16 @@ CodeGenTransform:
       )
     )
 
+  !view makeResultOnePlus(ret0 <: string, retN <: sequence of string) -> Result:
+    ret0 -> (:
+      ReturnTypes = ret0 -> <ReturnTypes> (:
+        TypeName = ret0
+        ResultTypeList = retN -> <ResultTypeList> (tname:
+          TypeName = tname
+        )
+      )
+    )
+
   !view methodSignature(ep <: sysl.Endpoint) -> Signature:
     ep -> (:
       Parameters = ep -> <Parameters>(:
@@ -375,13 +387,7 @@ CodeGenTransform:
           ParameterDeclC = [httpHeader] | paramTemp
         )
       )
-      Result = ep -> <Result> (:
-        ReturnTypes = ep -> <ReturnTypes> (:
-          ResultTypeList = ["*restlib.HttpResult", "error"] -> <ResultTypeList>(name:
-            TypeName = name
-          )
-        )
-      )
+      Result = makeResultOnePlus("*restlib.HttpResult", ["error"])
     )
 
 
@@ -391,13 +397,24 @@ CodeGenTransform:
       Signature = methodSignature(ep)
     )
 
-  !view GoAlias(aliases <: set of sysl.Types) -> sequence of Declaration:
+  !view GoAlias(aliases <: sequence of sysl.Types) -> sequence of Declaration:
     aliases -> (alias:
       Comment = '// ' + alias.key + ' ...'
       Declaration = alias -> <Declaration>(:
         AliasDecl = alias -> <AliasDecl>(:
           identifier = .key
           Type = GoType(.value).out
+        )
+      )
+    )
+  
+  !view varDecl(name <: string, typeName <: string) -> TopLevelDecl:
+    name -> (:
+      Comment = "// Reference imports to suppress unused errors"    
+      Declaration = name -> <Declaration> (:
+        VarDecl = name -> <VarDecl> (:
+          identifier = name
+          TypeName = typeName
         )
       )
     )
@@ -410,10 +427,12 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        ImportSpec = ["../lib", "context", "fmt", "net/http", "net/url"] -> <ImportSpec> (importPath:
-          Import = '"' + importPath + '"'
+        ImportSpec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/anz-bank/syslgen-examples/lib", "github.com/rickb777/date"] -> <ImportSpec> (importPath:
+          Import = if importPath == "" then true else '"' + importPath + '"'
         )
       )
+
+      let unused = [varDecl("_", "time.Parse"), varDecl("_", "date.Parse")]
 
       let svcInterface = [.name] -> <TopLevelDecl> (name:
         Comment = '// ' + name + ' ...'
@@ -487,5 +506,5 @@ CodeGenTransform:
           )
         )
       )
-      TopLevelDecl = GoStructs(app.types) | GoAlias(app.alias) | GoInterfaces(app.union) | svcInterface | clientStruct |  makeClient  |  ClientMethods(.name, app.endpoints)
+      TopLevelDecl = unused | GoStructs(app.types) |  GoAlias(app.alias where(HasPrefix(.key, "EXTERNAL_") == false )) | GoInterfaces(app.union) | svcInterface | clientStruct |  makeClient  |  ClientMethods(.name, app.endpoints)
     )

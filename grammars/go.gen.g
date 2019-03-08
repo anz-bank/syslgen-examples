@@ -10,7 +10,7 @@ FieldDecl: '\t' identifier Type? Tag? '\n';
 IdentifierList: identifier IdentifierListC*;
 IdentifierListC: ',' identifier;
 
-VarDecl: 'var' IdentifierList TypeName;
+VarDecl: 'var' identifier '=' TypeName '\n';
 ConstDecl: 'const' '(\n'  ConstSpec '\n)\n';
 ConstSpec: VarName TypeName '=' ConstValue '\n';
 
@@ -18,8 +18,8 @@ FunctionDecl   : 'func' FunctionName Signature? Block? ;
 Signature: Parameters Result?;
 Parameters: '(' ParameterList? ')';
 Result         : ReturnTypes | TypeName;
-ReturnTypes: '(' ResultTypeList* ')';
-ResultTypeList: TypeName ',';
+ReturnTypes: '(' TypeName ResultTypeList* ')';
+ResultTypeList: ',' TypeName ;
 TypeList:  TypeName;
 ParameterList     : ParameterDecl ParameterDeclC*;
 ParameterDecl  : Identifier TypeName;
@@ -31,8 +31,8 @@ MethodDecl: 'func' Receiver FunctionName Signature? Block? '\n';
 Receiver: '(' ReceiverType ')';
 AliasDecl: 'type' identifier Type? ';\n\n';
 
-Block: '{\n' StatementList* '}\n\n';
-StatementList: Statement ';\n';
+Block: '{\n'  StatementList* '}\n\n';
+StatementList: '\t' Statement '\n';
 Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt | FunctionCall;
 
 AssignStmt: Variables '=' Expression;
