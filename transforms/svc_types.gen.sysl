@@ -1,13 +1,15 @@
 CodeGenTransform:
-  !view IsKeyword(word <: string) -> bool:
+  !view GoName(word <: string) -> string:
     word -> (:
-      out = word in {"break", "default","func","interface","select","case","defer","go","map","struct","chan","else","goto","package","switch","const","fallthrough","if","range","type","continue","for","import","return","var"}
-    )
-  !view GetGoField(word <: string) -> string:
-    word -> (:
-      let wordUpper = ToTitle(word)
+      let splitted = Split(word, "_")
       # Common initialisms https://github.com/golang/lint/blob/8f45f776aaf18cebc8d65861cc70c33c60471952/lint.go#L771
-      out = if (wordUpper in {"ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"}) == true then wordUpper else Title(ToLower(word))
+      let initialisms = ["ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"]
+
+      let wordUpper = splitted -> <sequence of string> (w:
+        let upper = ToTitle(w)
+        out = if upper in initialisms then upper else Title(ToLower(w))
+      )
+      out = Join(wordUpper flatten(.out), "")
     )
 
   !view GoType(t <: sysl.Type) -> string:
@@ -24,7 +26,7 @@ CodeGenTransform:
           "DATE" => "date.Date"
           "DATETIME" => "time.Time"
         "sequence" => "[]" + GoType(t.sequence).out
-        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then Trim(t.type_ref, "EXTERNAL_") else t.type_ref
+        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then GoName(Trim(t.type_ref, "EXTERNAL_")).out else GoName(t.type_ref).out
       out = IsPtr + typeName
     )
 
@@ -35,20 +37,21 @@ CodeGenTransform:
 
   !view GoStructFields(fields <: set of Type) -> sequence of FieldDecl:
     fields -> (field:
-      let fieldName = GetGoField(field.key).out
+      let fieldName = GoName(field.key).out
       identifier = fieldName
-
-      let fieldTag = '`json:"' + ToLower(field.key)
+      let jsonTag = if field.value.attrs.json_tag == null then field.key else field.value.attrs.json_tag
+      let fieldTag = '`json:"' + jsonTag
       Tag = if field.value.optional == true then (fieldTag + ',omitempty"`') else (fieldTag + '"`')
       Type = GoType(field.value).out
     )
 
   !view GoStructs(types <: set of Type) -> sequence of TopLevelDecl:
     types -> (type:
-        Comment = '// ' + type.key + ' ...'
+        let typeName = GoName(type.key).out
+        Comment = '// ' + typeName + ' ...'
         Declaration = type -> <Declaration>(:
           StructType = type -> <StructType>(:
-            StructName = .key
+            StructName = typeName
             FieldDecl = GoStructFields(.value.fields)
           )
         )
@@ -59,7 +62,7 @@ CodeGenTransform:
         Comment = '// ' + union.key + ' ...'
         Declaration = union -> <Declaration>(:
           InterfaceType = union -> <InterfaceType>(:
-            InterfaceName = .key
+            InterfaceName = GoName(.key).out
             let methodName = "Is" + .key
             MethodSpec = [methodName] -> <sequence of MethodSpec> (name:
               MethodName = name
@@ -88,12 +91,12 @@ CodeGenTransform:
       let path = Replace(urlPath, "/", "_", -1)
       let path2 = Replace(path, "{", "", -1)
       let path3 = Replace(path2, "}", "", -1)
-      out = method + path3
+      out = GoName(method + path3).out
     )
 
   !view clientName(name <: string) -> string:
     name -> (:
-      out = Title(ToLower(name)) + "Client"
+      out = GoName(name).out + "Client"
     )
 
   !view makeGetArgExpr(lhs <: string, rhs <: string) -> Expression:
@@ -226,7 +229,7 @@ CodeGenTransform:
             NewSlice = typeName -> <NewSlice> (:
               TypeName = typeName
               let v = values -> <sequence of string> (:
-                out = '&' + . + '{}'
+                out = '&' + GoName(.).out + '{}'
               )
               SliceValues = Join(v flatten(.out), ',')
             )
@@ -274,13 +277,14 @@ CodeGenTransform:
 
   !view addQueryParams(ep <: sysl.Endpoint) -> sequence of Statement:
     ep.value.queryvars where (.optional == true) -> (qparam:
+      let varName = Join(Split(qparam.name, "_"),"")
       Statement = qparam -> <Statement> (:
         IfElseStmt = qparam -> <IfElseStmt> (:
-          Expression = makeValueExpr(.name + " != nil").Expression
+          Expression = makeValueExpr(varName + " != nil").Expression
           Block = qparam -> <Block> (:
             let stmt = qparam -> <StatementList> (:
-              let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr("*" + .name)])
-              Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + .name + '"'), [sprintfCall]).Expression
+              let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr("*" + varName)])
+              Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + varName + '"'), [sprintfCall]).Expression
             )
             StatementList = [stmt]
           )
@@ -380,7 +384,7 @@ CodeGenTransform:
           let paramList = ep.value.params where ("body" in .attrs.patterns ) | ep.value.pathvars | ep.value.queryvars
           let paramTemp  = paramList -> <sequence of ParameterDeclC>(p:
             ParameterDecl = p -> <ParameterDecl>(:
-              Identifier = p.name
+              Identifier = Join(Split(p.name, "_"),"")
               TypeName = GoType(p).out
             )
           )
@@ -399,10 +403,11 @@ CodeGenTransform:
 
   !view GoAlias(aliases <: sequence of sysl.Types) -> sequence of Declaration:
     aliases -> (alias:
-      Comment = '// ' + alias.key + ' ...'
+      let typeName = GoName(alias.key).out
+      Comment = '// ' + typeName + ' ...'
       Declaration = alias -> <Declaration>(:
         AliasDecl = alias -> <AliasDecl>(:
-          identifier = .key
+          identifier = typeName
           Type = GoType(.value).out
         )
       )
@@ -435,10 +440,11 @@ CodeGenTransform:
       let unused = [varDecl("_", "time.Parse"), varDecl("_", "date.Parse")]
 
       let svcInterface = [.name] -> <TopLevelDecl> (name:
-        Comment = '// ' + name + ' ...'
-        Declaration = name -> <Declaration>(:
-          InterfaceType = name -> <InterfaceType>(:
-            InterfaceName = name
+        let title = GoName(name).out
+        Comment = '// ' + title + ' ...'
+        Declaration = title -> <Declaration>(:
+          InterfaceType = title -> <InterfaceType>(:
+            InterfaceName = title
             MethodSpec =  GoMethods(app.endpoints)
           )
         )
