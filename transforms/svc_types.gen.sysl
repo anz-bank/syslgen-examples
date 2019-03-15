@@ -1,13 +1,13 @@
 CodeGenTransform:
   !view GoName(word <: string) -> string:
     word -> (:
-      let splitted = Split(word, "_")
+      let splitted = if MatchString("^([A-Z]+[a-z]+|[A-Z]+|[a-z]+)$", word) then [word] else FindAllString("[a-z]+|[A-Z][a-z]+|[A-Z]+", word, -1)
       # Common initialisms https://github.com/golang/lint/blob/8f45f776aaf18cebc8d65861cc70c33c60471952/lint.go#L771
       let initialisms = ["ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"]
 
       let wordUpper = splitted -> <sequence of string> (w:
         let upper = ToTitle(w)
-        out = if upper in initialisms then upper else Title(ToLower(w))
+        out = if upper in initialisms then upper else Title(w)
       )
       out = Join(wordUpper flatten(.out), "")
     )
