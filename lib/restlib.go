@@ -11,35 +11,35 @@ import (
 	"github.com/pkg/errors"
 )
 
-// HttpResult is the result return by the library
-type HttpResult struct {
-	HttpResponse *http.Response
+// HTTPResult is the result return by the library
+type HTTPResult struct {
+	HTTPResponse *http.Response
 	Body         []byte
 	Response     interface{}
 }
 
-func makeHttpResult(res *http.Response, body []byte, resp interface{}) *HttpResult {
-	return &HttpResult{
-		HttpResponse: res,
+func makeHTTPResult(res *http.Response, body []byte, resp interface{}) *HTTPResult {
+	return &HTTPResult{
+		HTTPResponse: res,
 		Body:         body,
 		Response:     resp,
 	}
 }
 
-// DoHttpRequest returns HttpResult
-// with HttpResult.httpResponse.Body set to nil
-func DoHttpRequest(client *http.Client, ctx context.Context, method string, urlString string, body interface{}, headers map[string]string, required []string, response []interface{}) (*HttpResult, error) {
+// DoHTTPRequest returns HTTPResult
+// with HTTPResult.httpResponse.Body set to nil
+func DoHTTPRequest(ctx context.Context, client *http.Client, method string, urlString string, body interface{}, headers map[string]string, required []string, response []interface{}) (*HTTPResult, error) {
 	var reader io.Reader
 	var err error
 
 	// Validations 1:
 	// If we have body, marshal it to json
 	if body != nil {
-		reqJson, err := json.Marshal(body)
+		reqJSON, err := json.Marshal(body)
 		if err != nil {
 			return nil, err
 		}
-		reader = bytes.NewReader(reqJson)
+		reader = bytes.NewReader(reqJSON)
 	}
 
 	// Validations 2:
@@ -71,8 +71,8 @@ func DoHttpRequest(client *http.Client, ctx context.Context, method string, urlS
 	for _, respInterface := range response {
 		err = json.Unmarshal(respBody, respInterface)
 		if err == nil {
-			return makeHttpResult(httpResponse, respBody, respInterface), nil
+			return makeHTTPResult(httpResponse, respBody, respInterface), nil
 		}
 	}
-	return makeHttpResult(httpResponse, respBody, nil), nil
+	return makeHTTPResult(httpResponse, respBody, nil), nil
 }

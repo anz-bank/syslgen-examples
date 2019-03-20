@@ -14,7 +14,7 @@ CodeGenTransform:
 
   !view GoType(t <: sysl.Type) -> string:
     t -> (:
-      let IsPtr = if t.optional == true then "*" else ""
+      let IsPtr = if t.optional == true && t.type != "sequence" then "*" else ""
       let typeName = if t.type ==:
         "primitive" => if t.primitive ==:
           "DECIMAL" => "double"
@@ -197,9 +197,9 @@ CodeGenTransform:
           )
 
           let body2 = if body count == 0 then [nilExpr] else body
-          let restofArgs = [makeValueExpr("ctx"), makeValueExpr('"' + ep.value.method + '"'), makeFunctionZero("u.String")] | body2 | [makeValueExpr("headers"), makeValueExpr("required") , makeValueExpr("responses")]
+          let restofArgs = [makeGetArgExpr("s", "client"), makeValueExpr('"' + ep.value.method + '"'), makeFunctionZero("u.String")] | body2 | [makeValueExpr("headers"), makeValueExpr("required") , makeValueExpr("responses")]
 
-          Expression =  makeFunctionCall("restlib.DoHttpRequest", makeGetArgExpr("s", "client"), restofArgs).Expression
+          Expression =  makeFunctionCall("restlib.DoHTTPRequest", makeValueExpr("ctx"), restofArgs).Expression
         )
       )
     )
@@ -215,7 +215,7 @@ CodeGenTransform:
           )
           let restArg = [makeGetArgExpr("s", "url")] | params
           let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr(args.formatArgs), restArg)
-          Expression = makeFunctionCall("restlib.DoHttpRequest", makeGetArgExpr("s", "client"), [ makeValueExpr("ctx"), makeValueExpr('"' + methodName + '"'), sprintfCall, makeValueExpr("responses")] ).Expression
+          Expression = makeFunctionCall("restlib.DoHTTPRequest", makeGetArgExpr("s", "client"), [ makeValueExpr("ctx"), makeValueExpr('"' + methodName + '"'), sprintfCall, makeValueExpr("responses")] ).Expression
         )
       )   
     )
@@ -391,9 +391,8 @@ CodeGenTransform:
           ParameterDeclC = [httpHeader] | paramTemp
         )
       )
-      Result = makeResultOnePlus("*restlib.HttpResult", ["error"])
+      Result = makeResultOnePlus("*restlib.HTTPResult", ["error"])
     )
-
 
   !view GoMethods(eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
     eps -> (ep:
@@ -427,8 +426,9 @@ CodeGenTransform:
   !view goFile(app <: sysl.App) -> string:
     app -> (:
 
-      PackageClause = .name -> <package> (name:
-        PackageName = "main"
+      PackageClause = app -> <package> (:
+        let pname = if .attrs.package != null then .attrs.package else app.name
+        PackageName = ToLower(pname)
       )
 
       ImportDecl = app -> <ImportDecl>(:
