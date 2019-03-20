@@ -27,10 +27,8 @@ func makeHTTPResult(res *http.Response, body []byte, resp interface{}) *HTTPResu
 }
 
 // DoHTTPRequest returns HTTPResult
-// with HTTPResult.httpResponse.Body set to nil
 func DoHTTPRequest(ctx context.Context, client *http.Client, method string, urlString string, body interface{}, headers map[string]string, required []string, response []interface{}) (*HTTPResult, error) {
 	var reader io.Reader
-	var err error
 
 	// Validations 1:
 	// If we have body, marshal it to json
@@ -51,6 +49,9 @@ func DoHTTPRequest(ctx context.Context, client *http.Client, method string, urlS
 	}
 
 	httpRequest, err := http.NewRequest(method, urlString, reader)
+	if err != nil {
+		return nil, err
+	}
 
 	for key, val := range headers {
 		httpRequest.Header.Add(key, val)
