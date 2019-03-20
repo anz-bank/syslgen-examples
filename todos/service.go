@@ -1,19 +1,28 @@
-package main
+package todos
 
 import (
-	"../lib"
 	"context"
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/anz-bank/syslgen-examples/lib"
+	"github.com/rickb777/date"
 )
+
+// Reference imports to suppress unused errors
+var _ = time.Parse
+
+// Reference imports to suppress unused errors
+var _ = date.Parse
 
 // Post ...
 type Post struct {
 	Body   string `json:"body"`
 	ID     int64  `json:"id"`
 	Title  string `json:"title"`
-	Userid int64  `json:"userid"`
+	UserID int64  `json:"userId"`
 }
 
 // Todo ...
@@ -21,7 +30,7 @@ type Todo struct {
 	Completed bool   `json:"completed"`
 	ID        int64  `json:"id"`
 	Title     string `json:"title"`
-	Userid    int64  `json:"userid"`
+	UserID    int64  `json:"userId"`
 }
 
 // Posts ...
@@ -29,10 +38,10 @@ type Posts []Post
 
 // Todos ...
 type Todos interface {
-	GET_comments(ctx context.Context, headers map[string]string, postId int64) (*restlib.HttpResult, error)
-	GET_posts(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error)
-	GET_todos_id(ctx context.Context, headers map[string]string, id int64) (*restlib.HttpResult, error)
-	POST_comments(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error)
+	GETComments(ctx context.Context, headers map[string]string, postId int64) (*restlib.HTTPResult, error)
+	GETPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
+	GETTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error)
+	POSTComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
 }
 
 // TodosClient ...
@@ -46,8 +55,8 @@ func MakeTodosClient(client *http.Client, url string) *TodosClient {
 	return &TodosClient{client, url}
 }
 
-// GET_comments ...
-func (s *TodosClient) GET_comments(ctx context.Context, headers map[string]string, postId int64) (*restlib.HttpResult, error) {
+// GETComments ...
+func (s *TodosClient) GETComments(ctx context.Context, headers map[string]string, postId int64) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Posts{}}
 	u, err := url.Parse(fmt.Sprintf("%s/comments", s.url))
@@ -57,11 +66,11 @@ func (s *TodosClient) GET_comments(ctx context.Context, headers map[string]strin
 
 	q := u.Query()
 	u.RawQuery = q.Encode()
-	return restlib.DoHttpRequest(s.client, ctx, "GET", u.String(), nil, headers, required, responses)
+	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
-// GET_posts ...
-func (s *TodosClient) GET_posts(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error) {
+// GETPosts ...
+func (s *TodosClient) GETPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Posts{}}
 	u, err := url.Parse(fmt.Sprintf("%s/posts", s.url))
@@ -71,11 +80,11 @@ func (s *TodosClient) GET_posts(ctx context.Context, headers map[string]string) 
 
 	q := u.Query()
 	u.RawQuery = q.Encode()
-	return restlib.DoHttpRequest(s.client, ctx, "GET", u.String(), nil, headers, required, responses)
+	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
-// GET_todos_id ...
-func (s *TodosClient) GET_todos_id(ctx context.Context, headers map[string]string, id int64) (*restlib.HttpResult, error) {
+// GETTodosID ...
+func (s *TodosClient) GETTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Todo{}}
 	u, err := url.Parse(fmt.Sprintf("%s/todos/%v", s.url, id))
@@ -85,11 +94,11 @@ func (s *TodosClient) GET_todos_id(ctx context.Context, headers map[string]strin
 
 	q := u.Query()
 	u.RawQuery = q.Encode()
-	return restlib.DoHttpRequest(s.client, ctx, "GET", u.String(), nil, headers, required, responses)
+	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
-// POST_comments ...
-func (s *TodosClient) POST_comments(ctx context.Context, headers map[string]string) (*restlib.HttpResult, error) {
+// POSTComments ...
+func (s *TodosClient) POSTComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Post{}}
 	u, err := url.Parse(fmt.Sprintf("%s/comments", s.url))
@@ -99,5 +108,5 @@ func (s *TodosClient) POST_comments(ctx context.Context, headers map[string]stri
 
 	q := u.Query()
 	u.RawQuery = q.Encode()
-	return restlib.DoHttpRequest(s.client, ctx, "POST", u.String(), nil, headers, required, responses)
+	return restlib.DoHTTPRequest(ctx, s.client, "POST", u.String(), nil, headers, required, responses)
 }
