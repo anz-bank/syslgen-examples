@@ -41,7 +41,7 @@ CodeGenTransform:
       identifier = fieldName
       let jsonTag = if field.value.attrs.json_tag == null then field.key else field.value.attrs.json_tag
       let fieldTag = '`json:"' + jsonTag
-      Tag = if field.value.optional == true then (fieldTag + ',omitempty"`') else (fieldTag + '"`')
+      Tag = if field.value.optional == true && field.value.type != "sequence" then (fieldTag + ',omitempty"`') else (fieldTag + '"`')
       Type = GoType(field.value).out
     )
 
