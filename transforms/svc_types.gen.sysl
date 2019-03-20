@@ -440,7 +440,7 @@ CodeGenTransform:
       let unused = [varDecl("_", "time.Parse"), varDecl("_", "date.Parse")]
 
       let svcInterface = [.name] -> <TopLevelDecl> (name:
-        let title = GoName(name).out
+        let title = GoName(name).out + "Service"
         Comment = '// ' + title + ' ...'
         Declaration = title -> <Declaration>(:
           InterfaceType = title -> <InterfaceType>(:
@@ -472,9 +472,9 @@ CodeGenTransform:
       )
 
       let makeClient = [.name] -> <TopLevelDecl> (name:
-        Comment = '// ' + "Make" + clientName(name).out + ' ...'
+        Comment = '// ' + "New" + clientName(name).out + ' ...'
         FunctionDecl = name -> <FunctionDecl>(:
-          FunctionName = "Make" + clientName(name).out
+          FunctionName = "New" + clientName(name).out
           Signature = name -> <Signature> (:
             Parameters = name -> <Parameters>(:
               ParameterList = name -> <ParameterList>(:

@@ -14,7 +14,7 @@ VarDecl: 'var' identifier '=' TypeName '\n';
 ConstDecl: 'const' '(\n'  ConstSpec '\n)\n';
 ConstSpec: VarName TypeName '=' ConstValue '\n';
 
-FunctionDecl   : 'func' FunctionName Signature? Block? ;
+FunctionDecl   : 'func' FunctionName Signature? Block '\n\n';
 Signature: Parameters Result?;
 Parameters: '(' ParameterList? ')';
 Result         : ReturnTypes | TypeName;
@@ -27,11 +27,11 @@ ParameterDeclC: ',' ParameterDecl;
 
 InterfaceType      : 'type' InterfaceName 'interface'  '{\n'  MethodSpec* '}\n\n' MethodDecl*;
 MethodSpec         : '\t' MethodName Signature '\n' | InterfaceTypeName ;
-MethodDecl: 'func' Receiver FunctionName Signature? Block? '\n';
+MethodDecl: 'func' Receiver FunctionName Signature? Block? '\n\n';
 Receiver: '(' ReceiverType ')';
 AliasDecl: 'type' identifier Type? ';\n\n';
 
-Block: '{\n'  StatementList* '}\n\n';
+Block: '{\n'  StatementList* '}';
 StatementList: '\t' Statement '\n';
 Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt | FunctionCall;
 
