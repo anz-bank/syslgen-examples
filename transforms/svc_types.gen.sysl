@@ -278,8 +278,10 @@ CodeGenTransform:
   !view addQueryParams(ep <: sysl.Endpoint) -> sequence of Statement:
     ep.value.queryvars where (.optional == false) -> (qparam:
       let varName = ToLower(Join(Split(qparam.name, "_"),""))
-      let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr(varName)])
-      Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + qparam.name + '"'), [sprintfCall]).Expression
+      let valueExpr = if GoType(qparam).out ==:
+        "string" => makeValueExpr(varName)
+        else makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr(varName)])
+      Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + qparam.name + '"'), [valueExpr]).Expression
     )
 
   !view addOptionalQueryParams(ep <: sysl.Endpoint) -> sequence of Statement:
@@ -290,8 +292,10 @@ CodeGenTransform:
           Expression = makeValueExpr(varName + " != nil").Expression
           Block = qparam -> <Block> (:
             let stmt = qparam -> <StatementList> (:
-              let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr("*" + varName)])
-              Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + qparam.name + '"'), [sprintfCall]).Expression
+              let valueExpr = if GoType(qparam).out ==:
+                "*string" => makeValueExpr("*" + varName)
+                else makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr(varName)])
+              Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + qparam.name + '"'), [valueExpr]).Expression
             )
             StatementList = [stmt]
           )
