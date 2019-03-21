@@ -1,0 +1,29 @@
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: UK
+  lll:
+    line-length: 190
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - sloppyReassign
+      - docStub
+      - paramTypeCombine
+
+linters:
+  enable-all: true
+  disable:
+    - dupl
+    - gochecknoglobals
+    - gocyclo
+    - goconst
+

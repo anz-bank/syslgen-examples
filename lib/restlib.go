@@ -27,7 +27,9 @@ func makeHTTPResult(res *http.Response, body []byte, resp interface{}) *HTTPResu
 }
 
 // DoHTTPRequest returns HTTPResult
-func DoHTTPRequest(ctx context.Context, client *http.Client, method string, urlString string, body interface{}, headers map[string]string, required []string, response []interface{}) (*HTTPResult, error) {
+func DoHTTPRequest(ctx context.Context, client *http.Client, method string,
+	urlString string, body interface{}, headers map[string]string,
+	required []string, response []interface{}) (*HTTPResult, error) {
 	var reader io.Reader
 
 	// Validations 1:

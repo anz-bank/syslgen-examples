@@ -6,14 +6,15 @@ TYPES_TRANSFORM = transforms/svc_types.gen.sysl
 GRAMMAR = grammars/go.gen.g
 TYPES_TRANSFORM_INPUT = $(TYPES_TRANSFORM) $(GRAMMAR)
 
-todos: todos/todos
+todos: todos_client/todos
 
-todos/todos: todos/service.go todos_client/main.go
-	-rm todos/todos
-	cd todos; go build -o todos; cd -
+todos_client/%: %/service.go %_client/main.go
+	-rm $*/$*
+	cd $*_client; go build -o $*; cd -
 
 %/service.go: examples/%.sysl $(TYPES_TRANSFORM_INPUT)
 	echo "creating output dir" $*
 	-mkdir $*
 	$(SYSLGEN) -root-model . -root-transform . -transform $(TYPES_TRANSFORM) -model examples/$*.sysl -grammar $(GRAMMAR) -start goFile -outdir $*
 	gofmt -w $*/service.go
+	golangci-lint run $*

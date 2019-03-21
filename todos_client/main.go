@@ -9,7 +9,7 @@ import (
 	"../todos"
 )
 
-func withTrace(context context.Context) context.Context {
+func withTrace(ctx context.Context) context.Context {
 	trace := &httptrace.ClientTrace{
 		DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
 			fmt.Printf("DNS Info: %+v\n", dnsInfo)
@@ -18,12 +18,12 @@ func withTrace(context context.Context) context.Context {
 			fmt.Printf("Got Conn: %+v\n", connInfo.Conn.RemoteAddr())
 		},
 	}
-	return httptrace.WithClientTrace(context, trace)
+	return httptrace.WithClientTrace(ctx, trace)
 }
 
 func main() {
 	httpClient := http.Client{}
-	client := todos.MakeTodosClient(&httpClient, "http://jsonplaceholder.typicode.com")
+	client := todos.NewClient(&httpClient, "http://jsonplaceholder.typicode.com")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result, err := client.GETTodosID(withTrace(ctx), map[string]string{}, 1)

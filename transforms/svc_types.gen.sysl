@@ -276,15 +276,22 @@ CodeGenTransform:
     )
 
   !view addQueryParams(ep <: sysl.Endpoint) -> sequence of Statement:
+    ep.value.queryvars where (.optional == false) -> (qparam:
+      let varName = ToLower(Join(Split(qparam.name, "_"),""))
+      let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr(varName)])
+      Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + qparam.name + '"'), [sprintfCall]).Expression
+    )
+
+  !view addOptionalQueryParams(ep <: sysl.Endpoint) -> sequence of Statement:
     ep.value.queryvars where (.optional == true) -> (qparam:
-      let varName = Join(Split(qparam.name, "_"),"")
+      let varName = ToLower(Join(Split(qparam.name, "_"),""))
       Statement = qparam -> <Statement> (:
         IfElseStmt = qparam -> <IfElseStmt> (:
           Expression = makeValueExpr(varName + " != nil").Expression
           Block = qparam -> <Block> (:
             let stmt = qparam -> <StatementList> (:
               let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr('"' +"%v" + '"'), [makeValueExpr("*" + varName)])
-              Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + varName + '"'), [sprintfCall]).Expression
+              Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + qparam.name + '"'), [sprintfCall]).Expression
             )
             StatementList = [stmt]
           )
@@ -338,7 +345,7 @@ CodeGenTransform:
       let required = declareHeaders("required", "string", requiredHeaders flatten(.attrs.name))
       let responses = declareReturnTypeArray("responses", "interface{}", Split(ep.value.ret.payload, ', '))
 
-      StatementList =  [required, responses, urlVariable(ep), returnIfError("err", "nil, err"), declareQueryVar("q")] | addQueryParams(ep) | [updateRawQuery("") , callRestLib(ep)]
+      StatementList =  [required, responses, urlVariable(ep), returnIfError("err", "nil, err"), declareQueryVar("q")] | addQueryParams(ep) |addOptionalQueryParams(ep) | [updateRawQuery("") , callRestLib(ep)]
     )
 
   !view ClientMethods(appName <: string, eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
@@ -347,7 +354,7 @@ CodeGenTransform:
       Comment = '// ' + funcName + ' ...'
       MethodDecl = ep -> <MethodDecl>(:
         Receiver = ep -> <Receiver>(:
-          ReceiverType = 's *' + clientName(appName).out
+          ReceiverType = "s *Client"
         )
         FunctionName = funcName
         Signature = methodSignature(ep)
@@ -380,15 +387,22 @@ CodeGenTransform:
               TypeName = "map[string]string"
             )
           )
-
-          let paramList = ep.value.params where ("body" in .attrs.patterns ) | ep.value.pathvars | ep.value.queryvars
-          let paramTemp  = paramList -> <sequence of ParameterDeclC>(p:
+          let bodyList = ep.value.params where ("body" in .attrs.patterns ) -> <sequence of ParameterDeclC>(p:
             ParameterDecl = p -> <ParameterDecl>(:
-              Identifier = Join(Split(p.name, "_"),"")
-              TypeName = GoType(p).out
+              Identifier = ToLower(Join(Split(p.name, "_"), ""))
+              let typeName = GoType(p).out
+              TypeName = "*" + typeName
             )
           )
-          ParameterDeclC = [httpHeader] | paramTemp
+          let paramList = ep.value.pathvars | ep.value.queryvars
+          let paramTemp  = paramList -> <sequence of ParameterDeclC>(p:
+            ParameterDecl = p -> <ParameterDecl>(:
+              Identifier = ToLower(Join(Split(p.name, "_"), ""))
+              let typeName = GoType(p).out
+              TypeName = typeName
+            )
+          )
+          ParameterDeclC = [httpHeader] | bodyList | paramTemp
         )
       )
       Result = makeResultOnePlus("*restlib.HTTPResult", ["error"])
@@ -432,16 +446,23 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        ImportSpec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/anz-bank/syslgen-examples/lib", "github.com/rickb777/date"] -> <ImportSpec> (importPath:
+        let spec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/rickb777/date"] -> <ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
+        let named = app -> <ImportDecl>(:
+          NamedImport = app -> <NamedImport>(:
+            Name = "restlib"
+            Import = '"' + "github.com/anz-bank/syslgen-examples/lib" + '"'
+          )
+        )
+        ImportSpec = spec | [named]
       )
 
       let unused = [varDecl("_", "time.Parse"), varDecl("_", "date.Parse")]
 
       let svcInterface = [.name] -> <TopLevelDecl> (name:
-        let title = GoName(name).out + "Service"
-        Comment = '// ' + title + ' ...'
+        let title = "Service"
+        Comment = "// Service interface for "  + name
         Declaration = title -> <Declaration>(:
           InterfaceType = title -> <InterfaceType>(:
             InterfaceName = title
@@ -451,10 +472,10 @@ CodeGenTransform:
       )
       
       let clientStruct = [.name] -> <TopLevelDecl> (name:
-        Comment = '// ' + clientName(name).out + ' ...'
+        Comment = "// Client for " + name + " API"
         Declaration = name -> <Declaration>(:
           StructType = name -> <StructType>(:
-            StructName = clientName(name).out
+            StructName = "Client"
 
             let urlField = name -> <FieldDecl>(:
               identifier = "url"
@@ -472,15 +493,15 @@ CodeGenTransform:
       )
 
       let makeClient = [.name] -> <TopLevelDecl> (name:
-        Comment = '// ' + "New" + clientName(name).out + ' ...'
+        Comment = "// NewClient for " + name
         FunctionDecl = name -> <FunctionDecl>(:
-          FunctionName = "New" + clientName(name).out
+          FunctionName = "NewClient"
           Signature = name -> <Signature> (:
             Parameters = name -> <Parameters>(:
               ParameterList = name -> <ParameterList>(:
 
                 let urlField = name -> <ParameterDecl>(:
-                    Identifier = "url"
+                    Identifier = "serviceURL"
                     TypeName = "string"
                 )
 
@@ -498,19 +519,21 @@ CodeGenTransform:
             )
 
             Result = name -> <Result> (:
-              TypeName = "*"+clientName(name).out
+              TypeName = "*Client"
             )
           )
           Block = name -> <Block>(item:
             StatementList = [item] -> <StatementList>(item:
               Statement = item -> <Statement> (:
                 ReturnStmt = item -> <ReturnStmt> (:
-                  PayLoad = '&' + clientName(name).out + '{client, url}'
+                  PayLoad = "&Client{client, serviceURL}"
                 )
               )
             )
           )
         )
       )
+      Comment = "//\n//    THIS IS AUTOGENERATED BY syslgen \n//\n"
+      
       TopLevelDecl = unused | GoStructs(app.types) |  GoAlias(app.alias where(HasPrefix(.key, "EXTERNAL_") == false )) | GoInterfaces(app.union) | svcInterface | clientStruct |  makeClient  |  ClientMethods(.name, app.endpoints)
     )

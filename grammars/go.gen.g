@@ -1,8 +1,9 @@
-goFile: PackageClause '\n' ImportDecl? '\n' TopLevelDecl+ '\n';
+goFile: PackageClause Comment? '\n' ImportDecl? '\n' TopLevelDecl+ '\n';
 PackageClause: 'package' PackageName ';\n';
 
 ImportDecl: 'import' '(\n' ImportSpec* '\n)\n';
-ImportSpec: Import '\n';
+ImportSpec: (Import | NamedImport) '\n';
+NamedImport: Name Import;
 TopLevelDecl: Comment '\n' (Declaration | FunctionDecl | MethodDecl);
 Declaration: VarDecl | ConstDecl | StructType | InterfaceType | AliasDecl;
 StructType : 'type' StructName 'struct' '{\n' FieldDecl* '}\n\n';
