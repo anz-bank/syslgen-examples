@@ -26,7 +26,7 @@ func main() {
 	client := todos.NewClient(&httpClient, "http://jsonplaceholder.typicode.com")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	result, err := client.GETTodosID(withTrace(ctx), map[string]string{}, 1)
+	result, err := client.GetTodosID(withTrace(ctx), map[string]string{}, 1)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 	} else {
