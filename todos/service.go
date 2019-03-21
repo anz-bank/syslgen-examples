@@ -42,10 +42,10 @@ type Posts []Post
 
 // Service interface for Todos
 type Service interface {
-	GETComments(ctx context.Context, headers map[string]string, postid int64) (*restlib.HTTPResult, error)
-	GETPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
-	GETTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error)
-	POSTComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
+	GetComments(ctx context.Context, headers map[string]string, postid int64) (*restlib.HTTPResult, error)
+	GetPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
+	GetTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error)
+	PostComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
 }
 
 // Client for Todos API
@@ -59,8 +59,8 @@ func NewClient(client *http.Client, serviceURL string) *Client {
 	return &Client{client, serviceURL}
 }
 
-// GETComments ...
-func (s *Client) GETComments(ctx context.Context, headers map[string]string, postid int64) (*restlib.HTTPResult, error) {
+// GetComments ...
+func (s *Client) GetComments(ctx context.Context, headers map[string]string, postid int64) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Posts{}}
 	u, err := url.Parse(fmt.Sprintf("%s/comments", s.url))
@@ -73,8 +73,8 @@ func (s *Client) GETComments(ctx context.Context, headers map[string]string, pos
 	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
-// GETPosts ...
-func (s *Client) GETPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
+// GetPosts ...
+func (s *Client) GetPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Posts{}}
 	u, err := url.Parse(fmt.Sprintf("%s/posts", s.url))
@@ -86,8 +86,8 @@ func (s *Client) GETPosts(ctx context.Context, headers map[string]string) (*rest
 	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
-// GETTodosID ...
-func (s *Client) GETTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error) {
+// GetTodosID ...
+func (s *Client) GetTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Todo{}}
 	u, err := url.Parse(fmt.Sprintf("%s/todos/%v", s.url, id))
@@ -99,8 +99,8 @@ func (s *Client) GETTodosID(ctx context.Context, headers map[string]string, id i
 	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
-// POSTComments ...
-func (s *Client) POSTComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
+// PostComments ...
+func (s *Client) PostComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Post{}}
 	u, err := url.Parse(fmt.Sprintf("%s/comments", s.url))

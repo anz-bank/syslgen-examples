@@ -91,7 +91,7 @@ CodeGenTransform:
       let path = Replace(urlPath, "/", "_", -1)
       let path2 = Replace(path, "{", "", -1)
       let path3 = Replace(path2, "}", "", -1)
-      out = GoName(method + path3).out
+      out = GoName(Title(ToLower(method)) + path3).out
     )
 
   !view clientName(name <: string) -> string:
