@@ -349,7 +349,10 @@ CodeGenTransform:
       let required = declareHeaders("required", "string", requiredHeaders flatten(.attrs.name))
       let responses = declareReturnTypeArray("responses", "interface{}", Split(ep.value.ret.payload, ', '))
 
-      StatementList =  [required, responses, urlVariable(ep), returnIfError("err", "nil, err"), declareQueryVar("q")] | addQueryParams(ep) |addOptionalQueryParams(ep) | [updateRawQuery("") , callRestLib(ep)]
+      let stmts =  [required, responses, urlVariable(ep), returnIfError("err", "nil, err")]
+      StatementList = if ep.value.queryvars count ==:
+       0 => stmts | [callRestLib(ep)]
+       else stmts | [declareQueryVar("q")] | addQueryParams(ep) | addOptionalQueryParams(ep) | [updateRawQuery("") , callRestLib(ep)]
     )
 
   !view ClientMethods(appName <: string, eps <: set of sysl.Endpoints) -> sequence of MethodSpec:

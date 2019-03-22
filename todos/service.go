@@ -81,8 +81,6 @@ func (s *Client) GetPosts(ctx context.Context, headers map[string]string) (*rest
 	if err != nil {
 		return nil, err
 	}
-	q := u.Query()
-	u.RawQuery = q.Encode()
 	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
@@ -94,8 +92,6 @@ func (s *Client) GetTodosID(ctx context.Context, headers map[string]string, id i
 	if err != nil {
 		return nil, err
 	}
-	q := u.Query()
-	u.RawQuery = q.Encode()
 	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
@@ -107,7 +103,5 @@ func (s *Client) PostComments(ctx context.Context, headers map[string]string) (*
 	if err != nil {
 		return nil, err
 	}
-	q := u.Query()
-	u.RawQuery = q.Encode()
 	return restlib.DoHTTPRequest(ctx, s.client, "POST", u.String(), nil, headers, required, responses)
 }
