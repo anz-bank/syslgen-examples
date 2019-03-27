@@ -1,0 +1,22 @@
+language: generic
+sudo: false
+services:
+- docker
+env:
+  global:
+  - SYSL2_VERSION=0.2.5-ubuntu18.04
+  - DOCKER_IMAGE_LATEST="anzbank/syslgen-examples"
+  - DOCKER_IMAGE_VERSIONED="$DOCKER_IMAGE_LATEST:${TRAVIS_TAG}"
+  - secure: aD2Pewo+AbWApxdnCydX89K2GLM1hD5ZC+dxpqWP3GYHLiiG64xJ/BjEvS05+3XCSjG0paIat6eclfCt7kpWsEop4kVKj5T1/3lFYWxWPgeKuTfFdnWSymBVTsk+bxYQoqOX9Gs8vsh9nnoplMngGY4EFVo++JqAyLl4OGCx1cqCXFmL/NURQPyBwrC10/xMbroZah+Auclse0g+8vZcHwnTpQNhpLS580XDgN3+ldiZPvJBD9O64n0/wiiM/T/SCgmVzxy1DjVjqpupERQI4Scc1Asug/pJXC8kzrSwRGXvH5kgq/iLpMdR6fEfRQiuWBcr9g6kTvbVFh3sXaR9MY23fWDN0pSrsd4xOevsVkNFrGlGAGLi2vYllXn9H7xVZuIRsi3ugCz6UvxLFaTuvwzDZXnk/PmE5bu6DsafcN+vDXUYrNOGM3xq/eVsC7IdzXPQBif0YbiWhAoTBovWKdC7HDGPNPuGFYcvjdUz3VacobfFMAIZ/pdr/PWk81j+TD3/HSUxOcnCugl9D4SOHD0/SU8kC/tdK7J4iD96Hfr3XipMgN1Wg3gWLgNwjGYRavhJ0jgvyHfqLm3jo9Qt/JKn+073jTx7tstsQZey3U14btE8BKXBpkmnR9pdkdjUVznFvlWVcyWlDC22pt5LNoYZgC/J7DRQqzBYw20BNWk=
+  - secure: Fhe/V68eaw5vAOh+YXqaJLbmncJ3JHM5368d1Pet/iahXP8HRZF6NIXkjPJbz5pq5HoWdOEN2p+/cnrmy2BAnjlG2Wdp2XUMNyQyZif4NZsa1KN0e4KNefhIk/u6/jU/WHv+BPmdE9zxRdpt/GpqR6d1oeG6B/5dklAY2yC6s6qGf/II3uwvP0w4/5YyG72xSjIQ4vcdxCYjOcJjk2IDpnjtr2StsyhGXbv7I1ARrGl3Dy9PUp0MeoMkqB2OtfuI2n4DO3WSHE+pqQL6anx0RfqS0QME1GjMrmX54tawL/A+F6IgNSHA87oHjhodaPEY2sw51avmQncRpnS245hJ5hI6K7mPwNXalIgNznfvhFvElL365TDMg9UfcWUn0dj5MZ/cpb4zH55rbsichB9JDPvsL4tYCV+Nlw3WRovww2GZW4DqQbBBXQwifSFUE6Ex/OMyzeccbTy4LzMvcarQEhvwhteEfozGw9q7tFEslwF5uWIRLK/Evz/nz6H1pbQfjTVE2eUQnUXEowNcZwtQ2GEfUP443bkIF4GRBLpN7a0zOsOIg9NBMQJ+i4AqYjsymGFPP1OfPKXQKAW+ERbE92TPA34a4NSr2gnfD+pE3fwOTkDukvBWCSlm6yK2T7FzbYsHsXiX2h+FuD0/exJA+1gN/m5sloBLImEgNI9ZTEE=
+before_deploy:
+- docker build --build-arg SYSL2_VERSION=$SYSL2_VERSION -t "$DOCKER_IMAGE_LATEST"
+  -f Dockerfile .
+- docker tag "$DOCKER_IMAGE_LATEST" "$DOCKER_IMAGE_VERSIONED"
+deploy:
+- provider: script
+  script: docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"  && docker push "$DOCKER_IMAGE_VERSIONED" && docker push "$DOCKER_IMAGE_LATEST"
+  on:
+    repo: anz-bank/syslgen-examples
+    tags: true
+    condition: "$TRAVIS_OS_NAME = linux"
