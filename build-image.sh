@@ -5,8 +5,20 @@ set -e -x
 TAG=$1
 COMMAND=$2
 
+usage() {
+    echo "Usage: sh build-image.sh <tag> (build|deploy)"
+    echo "eg: sh build-image.sh 0.0.1 build"  
+}
+
+if [ -z "$TAG" ]; then
+    echo "Tag is not specified."
+    usage
+    exit 1
+fi
+
 if [ "$COMMAND" != "build" ] && [ "$COMMAND" != "deploy" ]; then
-    echo "Usage: build-image.sh [tag] [build|deploy]"
+    echo "Invalid command or command not specified."
+    usage
     exit 1
 fi
 
