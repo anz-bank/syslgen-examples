@@ -1,0 +1,208 @@
+CodeGenTransform:
+  !view GoName(word <: string) -> string:
+    word -> (:
+      let splitted = if MatchString("^([A-Z]+[a-z]+|[A-Z]+|[a-z]+)$", word) then [word] else FindAllString("[a-z]+|[A-Z][a-z]+|[A-Z]+", word, -1)
+      # Common initialisms https://github.com/golang/lint/blob/8f45f776aaf18cebc8d65861cc70c33c60471952/lint.go#L771
+      let initialisms = ["ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS"]
+
+      let wordUpper = splitted -> <sequence of string> (w:
+        let upper = ToTitle(w)
+        out = if upper in initialisms then upper else Title(w)
+      )
+      out = Join(wordUpper flatten(.out), "")
+    )
+  !view filename(app <: sysl.App) -> string:
+    app -> (:
+      filename =  "requestrouter.go"
+    )
+    
+  !view makeValueExpr(strValue <: string) -> Expression:
+    strValue -> (:
+      Expression = strValue -> <Expression>(:
+        ValueExpr = strValue
+      )
+    )
+
+  !view makeFunctionCall(funcName <: string, arg0 <: Expression, rest <: sequence of Expression) -> Statement:
+    funcName -> (:
+      Statement = funcName -> <Statement>(:
+        FunctionCall = funcName -> <FunctionCall>(:
+          FunctionName = funcName
+          FunctionArgs = funcName -> <FunctionArgs> (:
+            Expression = arg0.Expression
+            FuncArgsRest = rest -> <FuncArgsRest> (:
+              Expression = .Expression
+            )
+          )
+        )
+      )
+    )
+
+  !view RouteEndpoints(eps <: set of sysl.Endpoints) -> sequence of StatementList:
+    eps -> (ep:
+      let terms = ep.value.pathvars -> <out> (:
+        out = "{" + .name + "}"
+      )
+      let pathVars = terms flatten(.out)
+      let path = Split(ep.value.path, "/")
+      let method = Title(ToLower(ep.value.method))
+
+      let methodPostfix = path -> <string> (p:
+        let postfix  = if p in pathVars then Join(ep.value.pathvars flatten(.name), "") else p
+        out = Title(ToLower(postfix))
+      )
+
+      let handlerCall = "r." + "svcHandler" + "." + GoName(method + Join(methodPostfix flatten(.out), "")).out + "Handler"
+      let epPath =  '"' + Join(path, "/") + '"'
+      let funcName = "router." + method
+
+      Statement = makeFunctionCall(funcName, makeValueExpr(epPath), [makeValueExpr(handlerCall)]).Statement
+    )
+
+  !view goFile(app <: sysl.App) -> string:
+    app -> (:
+
+      PackageClause = app -> <package> (:
+        let pname = if .attrs.package != null then .attrs.package else app.name
+        PackageName = ToLower(pname)
+      )
+
+      ImportDecl = app -> <ImportDecl>(:
+        let spec = ["github.com/go-chi/chi"] -> <ImportSpec> (importPath:
+          Import = if importPath == "" then true else '"' + importPath + '"'
+        )
+        ImportSpec = spec
+      )
+
+      let routerVarname = "router"
+      let svcHandlerVarname = "svcHandler"
+
+      let svcInterface = [.name] -> <TopLevelDecl> (name:
+        let title = "Router"
+        Comment = "// Router interface for "  + name
+        Declaration = title -> <Declaration>(:
+          InterfaceType = title -> <InterfaceType>(:
+            let method = name -> <MethodSpec>(:
+              MethodName = 'Route'
+              Signature = name -> <Signature> (:
+                Parameters = name -> <Parameters>(:
+                  ParameterList = name -> <ParameterList>(:
+                    ParameterDecl = name -> <ParameterDecl>(:
+                      Identifier = ""
+                      TypeName = ""
+                    )
+                  )
+                )
+
+                Result = name -> <Result> (:
+                  TypeName = "*chi.Mux"
+                )
+              )              
+            )
+            
+            InterfaceName = title
+            MethodSpec =  [method]
+          )
+        )
+      )
+      
+      let serviceRouterStruct = [.name] -> <TopLevelDecl> (name:
+        Comment = "// ServiceRouter for " + name + " API"
+        Declaration = name -> <Declaration>(:
+          StructType = name -> <StructType>(:
+            StructName = "ServiceRouter"
+            
+            let svcHandlerField = name -> <FieldDecl>(:
+              identifier = svcHandlerVarname
+              Type = "*ServiceHandler"
+            )
+
+            FieldDecl = [svcHandlerField]
+          )
+        )
+      )
+
+      let makeRouter = [.name] -> <TopLevelDecl> (name:
+        Comment = "// NewServiceRouter for " + name
+        FunctionDecl = name -> <FunctionDecl>(:
+          FunctionName = "NewServiceRouter"
+          Signature = name -> <Signature> (:
+            Parameters = name -> <Parameters>(:
+              ParameterList = name -> <ParameterList>(:
+
+                ParameterDecl = name -> <ParameterDecl>(:
+                  Identifier = svcHandlerVarname
+                  TypeName = "*ServiceHandler"
+                )
+              )
+            )
+
+            Result = name -> <Result> (:
+              TypeName = "*ServiceRouter"
+            )
+          )
+          Block = name -> <Block>(item:
+            StatementList = [item] -> <StatementList>(item:
+              Statement = item -> <Statement> (:
+                ReturnStmt = item -> <ReturnStmt> (:
+                  PayLoad = "&ServiceRouter{" + svcHandlerVarname + "}"
+                )
+              )
+            )
+          )
+        )
+      )
+
+      let routeMethod = [.name] -> <TopLevelDecl> (name:
+        let funcName = "Route"
+        Comment = '// ' + funcName + ' ...'
+        MethodDecl = name -> <MethodDecl>(:
+          Receiver = name -> <Receiver>(:
+            ReceiverType = "r *ServiceRouter"
+          )
+          FunctionName = funcName
+          Signature = name -> <Signature> (:
+            Parameters = name -> <Parameters>(:
+              ParameterList = name -> <ParameterList>(:
+                ParameterDecl = name -> <ParameterDecl>(:
+                  Identifier = ""
+                  TypeName = ""
+                )
+              )
+            )
+
+            Result = name -> <Result> (:
+              TypeName = "*chi.Mux"
+            )
+          )
+          Block = name -> <Block>(:
+            let varDef = name -> <StatementList>(:
+              Statement = name -> <Statement> (:
+                DeclareAndAssignStmt = name -> <DeclareAndAssignStmt> (:
+                  Variables = routerVarname
+                  Expression = name -> <Expression> (:
+                    FunctionCall = name -> <FunctionCall> (:
+                      FunctionName = 'chi.NewRouter'
+                    )
+                  )
+                )
+              )
+            )
+
+            let returnVal = name -> <StatementList>(:
+              Statement = name -> <Statement> (:
+                ReturnStmt = name -> <ReturnStmt> (:
+                  PayLoad = routerVarname
+                )
+              )
+            )
+
+            StatementList = [varDef] | RouteEndpoints(app.endpoints) | [returnVal]
+          )
+        )
+      )
+
+      Comment = "//\n//    THIS IS AUTOGENERATED BY syslgen \n//\n"
+      
+      TopLevelDecl = svcInterface | serviceRouterStruct | makeRouter | routeMethod
+    )

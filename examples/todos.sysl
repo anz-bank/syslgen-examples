@@ -27,5 +27,5 @@ Todos:
     GET ?postId=int:
       return Posts
       
-    POST (newPost <: Post):
+    POST (newPost <: Post [~body]):
       return Post

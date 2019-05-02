@@ -189,7 +189,7 @@ CodeGenTransform:
         ReturnStmt = ep -> <ReturnStmt> (:
 
           let body = ep.value.params where("body" in .attrs.patterns) -> <Expression> (:
-            Expression = makeValueExpr(.name).Expression
+            Expression = makeValueExpr(ToLower(Join(Split(.name, "_"), ""))).Expression
           )
           
           let nilExpr = ep -> <Expression> (:
@@ -437,7 +437,7 @@ CodeGenTransform:
     name -> (:
       Comment = "// Reference imports to suppress unused errors"    
       Declaration = name -> <Declaration> (:
-        VarDecl = name -> <VarDecl> (:
+        VarDeclWithVal = name -> <VarDeclWithVal> (:
           identifier = name
           TypeName = typeName
         )

@@ -1,17 +1,18 @@
 goFile: PackageClause Comment? '\n' ImportDecl? '\n' TopLevelDecl+ '\n';
-PackageClause: 'package' PackageName ';\n';
+PackageClause: 'package' PackageName '\n';
 
 ImportDecl: 'import' '(\n' ImportSpec* '\n)\n';
 ImportSpec: (Import | NamedImport) '\n';
 NamedImport: Name Import;
 TopLevelDecl: Comment '\n' (Declaration | FunctionDecl | MethodDecl);
-Declaration: VarDecl | ConstDecl | StructType | InterfaceType | AliasDecl;
+Declaration: VarDecl | VarDeclWithVal | ConstDecl | StructType | InterfaceType | AliasDecl;
 StructType : 'type' StructName 'struct' '{\n' FieldDecl* '}\n\n';
 FieldDecl: '\t' identifier Type? Tag? '\n';
 IdentifierList: identifier IdentifierListC*;
 IdentifierListC: ',' identifier;
 
-VarDecl: 'var' identifier '=' TypeName '\n';
+VarDeclWithVal: 'var' identifier '=' TypeName '\n';
+VarDecl: 'var' identifier TypeName '\n';
 ConstDecl: 'const' '(\n'  ConstSpec '\n)\n';
 ConstSpec: VarName TypeName '=' ConstValue '\n';
 
@@ -32,9 +33,9 @@ MethodDecl: 'func' Receiver FunctionName Signature? Block? '\n\n';
 Receiver: '(' ReceiverType ')';
 AliasDecl: 'type' identifier Type? ';\n\n';
 
-Block: '{\n'  StatementList* '}';
+Block: '{\n'  StatementList* '}\n';
 StatementList: '\t' Statement '\n';
-Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt | FunctionCall;
+Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt | FunctionCall | VarDecl | ForLoop;
 
 AssignStmt: Variables '=' Expression;
 IfElseStmt: 'if' Expression Block;
@@ -42,11 +43,15 @@ IncrementVarByStmt: Variables '+=' Expression;
 ReturnStmt: 'return' (PayLoad | Expression);
 DeclareAndAssignStmt: Variables ':=' Expression;
 
-Expression: FunctionCall | NewStruct | GetArg |  ValueExpr | NewSlice;
+Expression: FunctionCall | NewStruct | GetArg |  ValueExpr | NewSlice | Map;
 
 GetArg: LHS '.' RHS;
 NewSlice: '[]' TypeName '{' SliceValues? '}';
+Map: 'map[' KeyType ']' ValType '{\n' KeyValuePairs? '\n}';
+KeyValuePairs: KeyValuePair*;
+KeyValuePair: Key ':' Value ',\n';
 FunctionCall: FunctionName '(' FunctionArgs? ')';
 FunctionArgs: Expression FuncArgsRest*;
 FuncArgsRest: ',' Expression;
 NewStruct: StructName '{}';
+ForLoop: '\nfor' LoopVar ':=' 'range' Variable Block;

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 
-	"../todos"
+	"github.com/anz-bank/syslgen-examples/todos"
 )
 
 func withTrace(ctx context.Context) context.Context {
