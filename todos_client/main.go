@@ -23,7 +23,7 @@ func withTrace(ctx context.Context) context.Context {
 
 func main() {
 	httpClient := http.Client{}
-	client := todos.NewClient(&httpClient, "http://jsonplaceholder.typicode.com")
+	client := todos.NewClient(&httpClient, "http://localhost:8080")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result, err := client.GetTodosID(withTrace(ctx), map[string]string{}, 1)

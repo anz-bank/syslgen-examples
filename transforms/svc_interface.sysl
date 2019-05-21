@@ -61,15 +61,21 @@ CodeGenTransform:
   !view getAllParams(ep <: sysl.Endpoint) -> sequence of AllParams:
     ep -> (:
       let queryParams = ep.value.queryvars -> <QueryParams> (param:
-        arg = GoName(param.name).out + " string"
+        arg = GoName(param.name).out+ " string"
       )
       let pathParams = ep.value.pathvars -> <PathParams> (param:
         arg = GoName(param.name).out + " string"
       )
+      let reqHeaderParams = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> <HeaderParams> (param:
+        paramName =  GoName(param.name).out
+      )
+      let optHeaderParams = ep.value.params where("header" in .attrs.patterns && "optional" in .attrs.patterns) -> <HeaderParams> (param:
+        paramName = GoName(param.name).out
+      )
       let bodyParams = ep.value.params where("body" in .attrs.patterns) -> <BodyParams> (param:
         arg = param.name + " " + param.type_ref
       )
-      AllParams = queryParams flatten(.arg) | pathParams flatten(.arg) | bodyParams flatten(.arg)
+      AllParams = queryParams flatten(.arg) | pathParams flatten(.arg) | bodyParams flatten(.arg) | reqHeaderParams flatten(.paramName) | optHeaderParams flatten(.paramName)
     )
 
   !view epHandlerMethodSpecs(eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
@@ -80,8 +86,7 @@ CodeGenTransform:
         Parameters = ep -> <Parameters>(:
           ParameterList = ep -> <ParameterList>(:
             ParameterDecl = paramDecl("w", "http.ResponseWriter").ParameterDecl
-            let allParams = paramDecl(Join(allParams.AllParams, ", "), "")
-            ParameterDeclC = if ep.value.params where("header" in .attrs.patterns) count > 0 then [paramDecl("headers", "map[string]string"), allParams] else [allParams]
+            ParameterDeclC = if ep.value.params where("header" in .attrs.patterns) count > 0 then [paramDecl(Join(allParams.AllParams, ", "), "string")] else [paramDecl(Join(allParams.AllParams, ", "), "")]
           )
         )
       )
@@ -111,7 +116,7 @@ CodeGenTransform:
         Parameters = methodName -> <Parameters>(:
           ParameterList = methodName -> <ParameterList>(:
             ParameterDecl = paramDecl("w", "http.ResponseWriter").ParameterDecl 
-            ParameterDeclC = [paramDecl("statusCode", "int"), paramDecl("message", "string"), paramDecl("errObj", "*error")]
+            ParameterDeclC = [paramDecl("statusCode", "int"), paramDecl("message", "string"), paramDecl("errObj", "error")]
           )
         )
       )

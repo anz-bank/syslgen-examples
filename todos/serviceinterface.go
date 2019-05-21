@@ -15,5 +15,5 @@ type ServiceInterface interface {
 	GetTodosID(w http.ResponseWriter, ID string)
 	PostComments(w http.ResponseWriter, newPost Post)
 	IsAuthorized(r *http.Request, authHeader string) bool
-	SendErrorResponse(w http.ResponseWriter, statusCode int, message string, errObj *error)
+	SendErrorResponse(w http.ResponseWriter, statusCode int, message string, errObj error)
 }

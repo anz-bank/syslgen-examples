@@ -109,7 +109,7 @@ CodeGenTransform:
       let errorCode = "http.StatusBadRequest"
       let errMsg = '"Error reading request body"'
 
-      StatementList = decodeStmts | [handleError(condition, errorCode, errMsg, "&" + decodeErr)]
+      StatementList = decodeStmts | [handleError(condition, errorCode, errMsg, decodeErr)]
     )
 
   !view methodDef(ep <: sysl.Endpoint) -> string:
@@ -187,39 +187,16 @@ CodeGenTransform:
       let required = declareHeaders("required", "string", requiredHeaders flatten(.attrs.name))
       let optional = declareHeaders("optional", "string", optionalHeaders flatten(.attrs.name))
 
-      let headerMapVar = methodName -> <Statement> (:
+      let reqHeaderMapVar = methodName -> <Statement> (:
         Statement = methodName -> <Statement> (:
           DeclareAndAssignStmt = methodName -> <DeclareAndAssignStmt> (:
-            Variables = "headerMap"
-            Expression = methodName -> <Expression> (:
-              Map = methodName -> <Map> (:
-                KeyType = "string"
-                ValType = "string"
-              )
-            )
-          )
-        )
-      )
-
-      let headerMapAssign = methodName -> <Statement> (:
-        Statement = methodName -> <Statement> (:
-          AssignStmt = methodName -> <AssignStmt> (:
-            Variables = "headerMap[header]"
-            Expression = makeValueExpr("headerValue").Expression
-          )
-        )
-      )
-      
-      let headerValue = methodName -> <Statement> (:
-        Statement = methodName -> <Statement> (:
-          DeclareAndAssignStmt = methodName -> <DeclareAndAssignStmt> (:
-            Variables = "headerValue"
+            Variables = "reqHeaderMap, success"
             Expression = methodName -> <Expression> (:
               FunctionCall = methodName -> <FunctionCall> (:
-                FunctionName = "restlib.GetHeaderParam"
+                FunctionName = "s.GetHeaders"
                 FunctionArgs = methodName -> <FunctionArgs> (:
-                  Expression = makeValueExpr("r").Expression
-                  FuncArgsRest = [makeValueExpr("header")]
+                  Expression = makeValueExpr("w").Expression
+                  FuncArgsRest = [makeValueExpr("r"), makeValueExpr("required"), makeValueExpr("true")]
                 )
               )
             )
@@ -227,60 +204,41 @@ CodeGenTransform:
         )
       )
 
-      let validate= methodName -> <Statement> (:
+      let returnIfInvalid = methodName -> <Statement> (:
         Statement = methodName -> <Statement> (:
           IfElseStmt = methodName -> <IfElseStmt> (:
-            Expression = makeValueExpr('headerValue == ""').Expression
+            Expression = makeValueExpr("!success").Expression
             Block = methodName -> <Block> (:
-              let interfaceCall = methodName -> <Statement> (:
-                Statement = methodName -> <Statement> (:
-                  FunctionCall = methodName -> <ReturnStmt> (:
-                    FunctionName = "s.serviceInterface.SendErrorResponse"
-                    FunctionArgs = methodName -> <FunctionArgs> (:
-                      Expression = makeValueExpr("w").Expression
-                      FuncArgsRest = [makeValueExpr("http.StatusBadRequest"), makeValueExpr('header + " header length is zero"'), makeValueExpr("nil")]
-                    )
-                  )
-                )
-              )
-              let returnStmt = methodName -> <Statement> (:
-                Statement = methodName -> <Statement> (:
-                  ReturnStmt = methodName -> <ReturnStmt> (:
+              StatementList =  [methodName] -> <StatementList> (:
+                Statement =  methodName -> <Statement> (:
+                  ReturnStmt =  methodName -> <ReturnStmt> (:
                     PayLoad = ""
                   )
                 )
               )
-              StatementList = [interfaceCall, returnStmt]
             )
           )
         )
       )
-
-      let loopRequired = methodName -> <Statement> (:
+      
+      let optHeaderMapVar = methodName -> <Statement> (:
         Statement = methodName -> <Statement> (:
-          ForLoop = methodName -> <ForLoop> (:
-            LoopVar = "_, header"
-            Variable = "required"
-            Block = methodName -> <StatementList> (:
-              StatementList = [headerValue, validate, headerMapAssign]
+          DeclareAndAssignStmt = methodName -> <DeclareAndAssignStmt> (:
+            Variables = "optHeaderMap, _"
+            Expression = methodName -> <Expression> (:
+              FunctionCall = methodName -> <FunctionCall> (:
+                FunctionName = "s.GetHeaders"
+                FunctionArgs = methodName -> <FunctionArgs> (:
+                  Expression = makeValueExpr("w").Expression
+                  FuncArgsRest = [makeValueExpr("r"), makeValueExpr("optional"), makeValueExpr("false")]
+                )
+              )
             )
           )
         )
       )
 
-      let loopOptionals = methodName -> <Statement> (:
-        Statement = methodName -> <Statement> (:
-          ForLoop = methodName -> <ForLoop> (:
-            LoopVar = "_, header"
-            Variable = "optional"
-            Block = methodName -> <StatementList> (:
-              StatementList = [headerValue, headerMapAssign]
-            )
-          )
-        )
-      )
-
-      StatementList = [required, optional, headerMapVar, loopRequired, loopOptionals]
+      StatementList = [required, optional, reqHeaderMapVar, returnIfInvalid, optHeaderMapVar]
     )
   
   !view getReqVars(allParams <: AllParams) -> sequence of StatementList:
@@ -303,20 +261,22 @@ CodeGenTransform:
     ep -> (:
       let queryParams = ep.value.queryvars -> <QueryParams> (param:
         paramType = ParamType(param).out
-        paramName = GoName(param.name).out
+        paramName = param.name
+        varName = GoName(param.name).out
       )
       let pathParams = ep.value.pathvars -> <PathParams> (param:
         paramType = ParamType(param).out
-        paramName = GoName(param.name).out
+        paramName = param.name
+        varName = GoName(param.name).out
       )
       let reqHeaderParams = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> <HeaderParams> (param:
         paramType = ParamType(param).out
-        paramName = GoName(param.name).out
+        paramName = 'reqHeaderMap["' + param.attrs.name + '"]'
         isOptional = false
       )
       let optHeaderParams = ep.value.params where("header" in .attrs.patterns && "optional" in .attrs.patterns) -> <HeaderParams> (param:
         paramType = ParamType(param).out
-        paramName = GoName(param.name).out
+        paramName = 'optHeaderMap["' + param.attrs.name + '"]'
         isOptional = true
       )
       let bodyParams = ep.value.params where("body" in .attrs.patterns) -> <BodyParams> (param:
@@ -327,7 +287,7 @@ CodeGenTransform:
       PathParams = pathParams
       HeaderParams = reqHeaderParams | optHeaderParams
       BodyParams = bodyParams
-      AllParams = queryParams flatten(.paramName) | pathParams flatten(.paramName) | bodyParams flatten(.paramName)
+      AllParams = queryParams flatten(.varName) | pathParams flatten(.varName) | bodyParams flatten(.paramName) | reqHeaderParams flatten(.paramName) | optHeaderParams flatten(.paramName)
     )
 
   !view jsonDecoder(decoderName <: string) -> Statement:
@@ -347,9 +307,9 @@ CodeGenTransform:
     
   !view verifyAuthHeaders(ep <: sysl.Endpoint) -> sequence of StatementList:
     ep -> (:
-      let condition = '!s.serviceInterface.IsAuthorized(r, headerMap["Authorization"])'
+      let condition = '!s.serviceInterface.IsAuthorized(r, reqHeaderMap["Authorization"])'
       # Following statement causes gosimple error by golangci-lint
-      # let condition = 's.serviceInterface.IsAuthorized(r, headerMap["Authorization"]) == false'
+      # let condition = 's.serviceInterface.IsAuthorized(r, reqHeaderMap["Authorization"]) == false'
       let errorCode = "http.StatusUnauthorized"
       let errMsg = '"Invalid authorization"'
 
@@ -357,52 +317,182 @@ CodeGenTransform:
     )
 
   !view TopLevelMethodDecl(eps <: set of sysl.Endpoints, packageName <: string) -> sequence of TopLevelDecl:
-    eps -> (ep:
-      let implFuncName = methodDef(ep).methodName
-      let funcName = implFuncName + "Handler"
-      let allParams = getAllParams(ep)
-
-      Comment = '// ' + funcName + ' ...'
-      MethodDecl = ep -> <MethodDecl>(:
-        Receiver = ep -> <Receiver>(:
-          ReceiverType = "s *ServiceHandler"
-        )
-        FunctionName = funcName
-        Signature = ep -> <Signature> (:
-          Parameters = ep -> <Parameters>(:
-            ParameterList = ep -> <ParameterList>(:
-              ParameterDecl = paramDecl("w", "http.ResponseWriter")
-              ParameterDeclC = [ep] -> <ParameterDeclC>(:
-                ParameterDecl = paramDecl("r", "*http.Request")
+    packageName -> (:
+      let epHandlerMethods = eps -> <TopLevelDecl>(ep:
+        let implFuncName = methodDef(ep).methodName
+        let funcName = implFuncName + "Handler"
+        let allParams = getAllParams(ep)
+        Comment = '// ' + funcName + ' ...'
+        MethodDecl = ep -> <MethodDecl>(:
+          Receiver = ep -> <Receiver>(:
+            ReceiverType = "s *ServiceHandler"
+          )
+          FunctionName = funcName
+          Signature = ep -> <Signature> (:
+            Parameters = ep -> <Parameters>(:
+              ParameterList = ep -> <ParameterList>(:
+                ParameterDecl = paramDecl("w", "http.ResponseWriter")
+                ParameterDeclC = [ep] -> <ParameterDeclC>(:
+                  ParameterDecl = paramDecl("r", "*http.Request")
+                )
               )
             )
           )
-        )
 
-        let implCall = ep -> <Statement> (:
-          Statement = ep -> <Statement> (:
-            FunctionCall = ep -> <FunctionCall> (:
-              FunctionName = "s.serviceInterface." + implFuncName
-              FunctionArgs = ep -> <FunctionArgs> (:
-                Expression = makeValueExpr("w").Expression
-                FuncArgsRest = if ep.value.params where("header" in .attrs.patterns) count > 0 then [makeValueExpr("headerMap"), makeValueExpr(Join(allParams.AllParams, ", "))] else [makeValueExpr(Join(allParams.AllParams, ", "))]
+          let implCall = ep -> <Statement> (:
+            Statement = ep -> <Statement> (:
+              FunctionCall = ep -> <FunctionCall> (:
+                FunctionName = "s.serviceInterface." + implFuncName
+                FunctionArgs = ep -> <FunctionArgs> (:
+                  Expression = makeValueExpr("w").Expression
+                  FuncArgsRest = [makeValueExpr(Join(allParams.AllParams, ", "))]
+                )
               )
             )
           )
-        )
 
-        Block = ep -> <Block>(:
-          let commonStmtList = getReqVars(allParams).StatementList
-          let headerStmtList = getHeaderMap(ep, "restlib.GetHeaderParam").StatementList
-          let stmtList1 = if ep.value.params where("header" in .attrs.patterns) count > 0 then commonStmtList | headerStmtList else commonStmtList
-          let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then stmtList1 | verifyAuthHeaders(ep).StatementList else stmtList1
-          StatementList = if ep.value.method ==:
-            "GET" => stmtList | [implCall]
-            "POST" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | [implCall]
-            "PUT" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | [implCall]
-            "DELETE" => stmtList  | [implCall]
+          Block = ep -> <Block>(:
+            let commonStmtList = getReqVars(allParams).StatementList
+            let headerStmtList = getHeaderMap(ep, "restlib.GetHeaderParam").StatementList
+            let stmtList1 = if ep.value.params where("header" in .attrs.patterns) count > 0 then commonStmtList | headerStmtList else commonStmtList
+            let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then stmtList1 | verifyAuthHeaders(ep).StatementList else stmtList1
+            StatementList = if ep.value.method ==:
+              "GET" => stmtList | [implCall]
+              "POST" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | [implCall]
+              "PUT" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | [implCall]
+              "DELETE" => stmtList  | [implCall]
+          )
         )
       )
+
+      let getHeaders = packageName -> <TopLevelDecl>(:
+        Comment = '// ' + "GetHeaders" + ' ...'
+        MethodDecl = packageName -> <MethodDecl>(:
+          Receiver = packageName -> <Receiver>(:
+            ReceiverType = "s *ServiceHandler"
+          )
+          FunctionName = "GetHeaders"
+          Signature = packageName -> <Signature> (:
+            Parameters = packageName -> <Parameters>(:
+              ParameterList = packageName -> <ParameterList>(:
+                ParameterDecl = paramDecl("w", "http.ResponseWriter")
+                let arg2 = packageName -> <ParameterDecl> (:
+                  ParameterDecl = paramDecl("r", "*http.Request")
+                )
+                let arg3 = packageName -> <ParameterDecl> (:
+                  ParameterDecl = paramDecl("headers", "[]string")
+                )
+                let arg4 = packageName -> <ParameterDecl> (:
+                  ParameterDecl = paramDecl("validate", "bool")
+                )
+                ParameterDeclC = [arg2, arg3, arg4]
+              )
+            )
+            Result = packageName -> <Result> (:
+              ReturnTypes = packageName -> <ReturnTypes> (:
+                TypeName = "map[string]string"
+                ResultTypeList  = [packageName] -> <ResultTypeList> (:
+                  TypeName = "bool"
+                )
+              )
+            )
+          )
+          Block = packageName -> <Block>(:
+            let headerMapVar = packageName -> <Statement> (:
+              Statement = packageName -> <Statement> (:
+                DeclareAndAssignStmt = packageName -> <DeclareAndAssignStmt> (:
+                  Variables = "headerMap"
+                  Expression = packageName -> <Expression> (:
+                    Map = packageName -> <Map> (:
+                      KeyType = "string"
+                      ValType = "string"
+                    )
+                  )
+                )
+              )
+            )
+
+            let forLoop = packageName -><Statement> (:
+              Statement = packageName -><Statement> (:
+                ForLoop = packageName -><ForLoop> (:
+                  LoopVar = "_, header"
+                  Variable = "headers"
+                  Block = packageName -><StatementList> (:
+                    let headerValue = packageName -><Statement> (:
+                      Statement = packageName -><Statement> (:
+                        DeclareAndAssignStmt = packageName -><DeclareAndAssignStmt> (:
+                          Variables = "headerValue"
+                          Expression = packageName -><Expression> (:
+                            FunctionCall = packageName -><FunctionCall> (:
+                              FunctionName = "restlib.GetHeaderParam"
+                              FunctionArgs = packageName -><FunctionArgs> (:
+                                Expression = makeValueExpr("r").Expression
+                                FuncArgsRest = [makeValueExpr("header")]
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+
+                    let validate= packageName -><Statement> (:
+                      Statement = packageName -><Statement> (:
+                        IfElseStmt = packageName -><IfElseStmt> (:
+                          Expression = makeValueExpr('validate && headerValue == ""').Expression
+                          Block = packageName -><Block> (:
+                            let interfaceCall = packageName -><Statement> (:
+                              Statement = packageName -><Statement> (:
+                                FunctionCall = packageName -><ReturnStmt> (:
+                                  FunctionName = "s.serviceInterface.SendErrorResponse"
+                                  FunctionArgs = packageName -><FunctionArgs> (:
+                                    Expression = makeValueExpr("w").Expression
+                                    FuncArgsRest = [makeValueExpr("http.StatusBadRequest"), makeValueExpr('header + " header length is zero"'), makeValueExpr("nil")]
+                                  )
+                                )
+                              )
+                            )
+                            let returnStmt = packageName -><Statement> (:
+                              Statement = packageName -><Statement> (:
+                                ReturnStmt = packageName -><ReturnStmt> (:
+                                  PayLoad = "headerMap, false"
+                                )
+                              )
+                            )
+                            StatementList = [interfaceCall, returnStmt]
+                          )
+                        )
+                      )
+                    )
+
+                    let headerMapAssign = packageName -><Statement> (:
+                      Statement = packageName -><Statement> (:
+                        AssignStmt = packageName -><AssignStmt> (:
+                          Variables = "headerMap[header]"
+                          Expression = makeValueExpr("headerValue").Expression
+                        )
+                      )
+                    )
+
+                    StatementList = [headerValue, validate, headerMapAssign]
+                  )
+                )
+              )
+            )
+
+            let returnStmt = packageName -> <Statement> (:
+              Statement = packageName -> <Statement> (:
+                ReturnStmt = packageName -> <ReturnStmt> (:
+                  PayLoad = "headerMap, true"
+                )
+              )
+            )
+
+            StatementList = [headerMapVar, forLoop, returnStmt]
+          )
+        )
+      )
+
+      TopLevelDecl = epHandlerMethods | [getHeaders]
     )
 
   !view goFile(app <: sysl.App) -> string:
@@ -483,5 +573,5 @@ CodeGenTransform:
 
       Comment = "//\n//    THIS IS AUTOGENERATED BY syslgen \n//\n"
       
-      TopLevelDecl = svcInterface | serviceHandlerStruct | newServiceHandler | TopLevelMethodDecl(app.endpoints, pname)
+      TopLevelDecl = svcInterface | serviceHandlerStruct | newServiceHandler | TopLevelMethodDecl(app.endpoints, pname).TopLevelDecl
     )

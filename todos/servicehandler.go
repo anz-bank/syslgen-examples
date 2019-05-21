@@ -31,7 +31,7 @@ func NewServiceHandler(serviceInterface ServiceInterface) *ServiceHandler {
 
 // GetCommentsHandler ...
 func (s *ServiceHandler) GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
-	PostID := restlib.GetQueryParam(r, "PostID")
+	PostID := restlib.GetQueryParam(r, "postId")
 	s.serviceInterface.GetComments(w, PostID)
 }
 
@@ -42,7 +42,7 @@ func (s *ServiceHandler) GetPostsHandler(w http.ResponseWriter, r *http.Request)
 
 // GetTodosIDHandler ...
 func (s *ServiceHandler) GetTodosIDHandler(w http.ResponseWriter, r *http.Request) {
-	ID := restlib.GetURLParam(r, "ID")
+	ID := restlib.GetURLParam(r, "id")
 	s.serviceInterface.GetTodosID(w, ID)
 }
 
@@ -53,9 +53,26 @@ func (s *ServiceHandler) PostCommentsHandler(w http.ResponseWriter, r *http.Requ
 
 	decodeErr := decoder.Decode(&newPost)
 	if decodeErr != nil {
-		s.serviceInterface.SendErrorResponse(w, http.StatusBadRequest, "Error reading request body", &decodeErr)
+		s.serviceInterface.SendErrorResponse(w, http.StatusBadRequest, "Error reading request body", decodeErr)
 		return
 	}
 
 	s.serviceInterface.PostComments(w, newPost)
+}
+
+// GetHeaders ...
+func (s *ServiceHandler) GetHeaders(w http.ResponseWriter, r *http.Request, headers []string, validate bool) (map[string]string, bool) {
+	headerMap := map[string]string{}
+
+	for _, header := range headers {
+		headerValue := restlib.GetHeaderParam(r, header)
+		if validate && headerValue == "" {
+			s.serviceInterface.SendErrorResponse(w, http.StatusBadRequest, header+" header length is zero", nil)
+			return headerMap, false
+		}
+
+		headerMap[header] = headerValue
+	}
+
+	return headerMap, true
 }
