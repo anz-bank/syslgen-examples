@@ -1,10 +1,12 @@
-package todos
+package todosimpl
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+
+	"github.com/anz-bank/syslgen-examples/todos"
 )
 
 // ServiceImpl for Todos API
@@ -17,13 +19,12 @@ func NewServiceImpl() *ServiceImpl {
 }
 
 func (s *ServiceImpl) GetTodosID(w http.ResponseWriter, id string) {
-	var retValues []Todo
 	for _, todo := range Todos {
 		if strconv.Itoa(int(todo.ID)) == id {
-			retValues = append(retValues, todo)
+			_ = json.NewEncoder(w).Encode(&todo)
+			return
 		}
 	}
-	_ = json.NewEncoder(w).Encode(&retValues)
 }
 
 func (s *ServiceImpl) GetPosts(w http.ResponseWriter) {
@@ -31,7 +32,7 @@ func (s *ServiceImpl) GetPosts(w http.ResponseWriter) {
 }
 
 func (s *ServiceImpl) GetComments(w http.ResponseWriter, postID string) {
-	var retValues []Post
+	var retValues todos.Posts
 	for _, post := range PostList {
 		if strconv.Itoa(int(post.ID)) == postID {
 			retValues = append(retValues, post)
@@ -40,7 +41,7 @@ func (s *ServiceImpl) GetComments(w http.ResponseWriter, postID string) {
 	_ = json.NewEncoder(w).Encode(&retValues)
 
 }
-func (s *ServiceImpl) PostComments(w http.ResponseWriter, newPost Post) {
+func (s *ServiceImpl) PostComments(w http.ResponseWriter, newPost todos.Post) {
 	PostList = append(PostList, newPost)
 	_ = json.NewEncoder(w).Encode(&newPost)
 	_ = json.NewEncoder(w).Encode(&PostList)
