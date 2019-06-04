@@ -1,20 +1,52 @@
 .PHONY: all
-all: todos
+all: clean/todos mkdir/todos generate/todos gotools/todos compile
 
-SYSLGEN=$(PWD)/syslgen
+.PHONY: clean
+clean: clean/todos
+
+.PHONY: mkdir
+mkdir: mkdir/todos
+
+.PHONY: gotools
+gotools: gotools/todos
+
+.PHONY: generate
+generate: generate/todos
+
+.PHONY: compile
+compile: todos_client/todos todos_server/todos
+
+SYSLGEN=$(GOPATH)/bin/syslgen
 TYPES_TRANSFORM = transforms/svc_types.gen.sysl
+INTERFACE_TRANSFORM = transforms/svc_interface.sysl
+HANDLER_TRANSFORM = transforms/svc_handler.sysl
+ROUTER_TRANSFORM = transforms/svc_router.sysl
 GRAMMAR = grammars/go.gen.g
 TYPES_TRANSFORM_INPUT = $(TYPES_TRANSFORM) $(GRAMMAR)
 
-todos: todos_client/todos
+gen = $(SYSLGEN) -root-model . -root-transform . -transform $(1) -model examples/$(2).sysl -grammar $(GRAMMAR) -start goFile -outdir $(2)
 
-todos_client/%: %/service.go %_client/main.go
-	-rm $*/$*
-	cd $*_client; go build -o $*; cd -
+clean/%:
+	-rm $*_client/$*-client
+	-rm $*_server/$*-server
 
-%/service.go: examples/%.sysl $(TYPES_TRANSFORM_INPUT)
+todos_client/%:
+	cd $*_client; go build -o $*-client; cd -
+
+todos_server/%:
+	cd $*_server; go build -o $*-server; cd -
+
+mkdir/%:
 	echo "creating output dir" $*
-	-mkdir $*
-	$(SYSLGEN) -root-model . -root-transform . -transform $(TYPES_TRANSFORM) -model examples/$*.sysl -grammar $(GRAMMAR) -start goFile -outdir $*
-	gofmt -w $*/service.go
+	-mkdir -p $*
+
+gotools/%:
+	gofmt -w $*/
+	goimports -w $*/
 	golangci-lint run $*
+
+generate/%:
+	$(call gen,$(TYPES_TRANSFORM),$*)
+	$(call gen,$(INTERFACE_TRANSFORM),$*)
+	$(call gen,$(HANDLER_TRANSFORM),$*)
+	$(call gen,$(ROUTER_TRANSFORM),$*)
