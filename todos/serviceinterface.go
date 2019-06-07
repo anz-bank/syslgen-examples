@@ -10,10 +10,10 @@ import (
 
 // ServiceInterface for Todos
 type ServiceInterface interface {
-	GetComments(w http.ResponseWriter, PostID string)
-	GetPosts(w http.ResponseWriter)
-	GetTodosID(w http.ResponseWriter, ID string)
-	PostComments(w http.ResponseWriter, newPost Post)
+	GetComments(PostID string) (int, map[string]string, *Posts)
+	GetPosts() (int, map[string]string, *Posts)
+	GetTodosID(ID string) (int, map[string]string, *Todo)
+	PostComments(newPost Post) (int, map[string]string, *Post)
 	IsAuthorized(r *http.Request, authHeader string) bool
-	SendErrorResponse(w http.ResponseWriter, statusCode int, message string, errObj error)
+	GetErrorResponse(statusCode int, message string, errObj error) interface{}
 }

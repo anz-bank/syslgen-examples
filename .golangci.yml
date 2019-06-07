@@ -8,7 +8,7 @@ linters-settings:
   misspell:
     locale: UK
   lll:
-    line-length: 250
+    line-length: 300
   gocritic:
     enabled-tags:
       - performance

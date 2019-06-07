@@ -32,18 +32,24 @@ func NewServiceHandler(serviceInterface ServiceInterface) *ServiceHandler {
 // GetCommentsHandler ...
 func (s *ServiceHandler) GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	PostID := restlib.GetQueryParam(r, "postId")
-	s.serviceInterface.GetComments(w, PostID)
+	httpStatus, headerMap, Posts := s.serviceInterface.GetComments(PostID)
+	restlib.SetHeaders(w, headerMap)
+	restlib.SendHTTPResponse(w, httpStatus, Posts)
 }
 
 // GetPostsHandler ...
 func (s *ServiceHandler) GetPostsHandler(w http.ResponseWriter, r *http.Request) {
-	s.serviceInterface.GetPosts(w)
+	httpStatus, headerMap, Posts := s.serviceInterface.GetPosts()
+	restlib.SetHeaders(w, headerMap)
+	restlib.SendHTTPResponse(w, httpStatus, Posts)
 }
 
 // GetTodosIDHandler ...
 func (s *ServiceHandler) GetTodosIDHandler(w http.ResponseWriter, r *http.Request) {
 	ID := restlib.GetURLParam(r, "id")
-	s.serviceInterface.GetTodosID(w, ID)
+	httpStatus, headerMap, Todo := s.serviceInterface.GetTodosID(ID)
+	restlib.SetHeaders(w, headerMap)
+	restlib.SendHTTPResponse(w, httpStatus, Todo)
 }
 
 // PostCommentsHandler ...
@@ -53,26 +59,12 @@ func (s *ServiceHandler) PostCommentsHandler(w http.ResponseWriter, r *http.Requ
 
 	decodeErr := decoder.Decode(&newPost)
 	if decodeErr != nil {
-		s.serviceInterface.SendErrorResponse(w, http.StatusBadRequest, "Error reading request body", decodeErr)
+		errResp := s.serviceInterface.GetErrorResponse(http.StatusBadRequest, "Error reading request body", decodeErr)
+		restlib.SendHTTPResponse(w, http.StatusBadRequest, errResp)
 		return
 	}
 
-	s.serviceInterface.PostComments(w, newPost)
-}
-
-// GetHeaders ...
-func (s *ServiceHandler) GetHeaders(w http.ResponseWriter, r *http.Request, headers []string, validate bool) (map[string]string, bool) {
-	headerMap := map[string]string{}
-
-	for _, header := range headers {
-		headerValue := restlib.GetHeaderParam(r, header)
-		if validate && headerValue == "" {
-			s.serviceInterface.SendErrorResponse(w, http.StatusBadRequest, header+" header length is zero", nil)
-			return headerMap, false
-		}
-
-		headerMap[header] = headerValue
-	}
-
-	return headerMap, true
+	httpStatus, headerMap, Post := s.serviceInterface.PostComments(newPost)
+	restlib.SetHeaders(w, headerMap)
+	restlib.SendHTTPResponse(w, httpStatus, Post)
 }

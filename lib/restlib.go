@@ -79,3 +79,22 @@ func DoHTTPRequest(ctx context.Context, client *http.Client, method string,
 	}
 	return makeHTTPResult(httpResponse, respBody, nil), nil
 }
+
+// Send HTTP response to the client
+func SendHTTPResponse(w http.ResponseWriter, httpStatus int, responses ...interface{}) {
+	w.WriteHeader(httpStatus)
+
+	for _, resp := range responses {
+		if resp != nil {
+			_ = json.NewEncoder(w).Encode(resp)
+			return
+		}
+	}
+}
+
+// Set headers in response
+func SetHeaders(w http.ResponseWriter, headerMap map[string]string) {
+	for k, v := range headerMap {
+		w.Header().Set(k, v)
+	}
+}

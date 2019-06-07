@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/anz-bank/syslgen-examples/todos"
 	"net/http"
 	"net/http/httptrace"
-
-	"github.com/anz-bank/syslgen-examples/todos"
 )
 
 func withTrace(ctx context.Context) context.Context {
@@ -30,6 +29,6 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 	} else {
-		fmt.Printf("Value: \n%+v\n", result.Response)
+		fmt.Printf("Status: %d\nValue: \n%+v\n", result.HTTPResponse.StatusCode, result.Response)
 	}
 }

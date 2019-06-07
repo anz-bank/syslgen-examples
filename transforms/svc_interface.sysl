@@ -85,9 +85,15 @@ CodeGenTransform:
       Signature = ep -> <Signature> (:
         Parameters = ep -> <Parameters>(:
           ParameterList = ep -> <ParameterList>(:
-            ParameterDecl = paramDecl("w", "http.ResponseWriter").ParameterDecl
-            ParameterDeclC = if ep.value.params where("header" in .attrs.patterns) count > 0 then [paramDecl(Join(allParams.AllParams, ", "), "string")] else [paramDecl(Join(allParams.AllParams, ", "), "")]
+            ParameterDecl = if ep.value.params where("header" in .attrs.patterns) count > 0 then paramDecl(Join(allParams.AllParams, ", "), "string").ParameterDecl else paramDecl(Join(allParams.AllParams, ", "), "").ParameterDecl
           )
+        )
+        Result = ep -> <Result>(:
+          let resultTypes = Split(ep.value.ret.payload, ', ') -> <sequence of string> (:
+            typeName = '*' + .
+          )
+
+          TypeName = if ep.value.ret.payload == "" then "int, map[string]string" else "(int, map[string]string," + Join(resultTypes flatten(.typeName),", ") + ")"
         )
       )
     )
@@ -115,9 +121,13 @@ CodeGenTransform:
       Signature = methodName -> <Signature> (:
         Parameters = methodName -> <Parameters>(:
           ParameterList = methodName -> <ParameterList>(:
-            ParameterDecl = paramDecl("w", "http.ResponseWriter").ParameterDecl 
-            ParameterDeclC = [paramDecl("statusCode", "int"), paramDecl("message", "string"), paramDecl("errObj", "error")]
+            ParameterDecl = paramDecl("statusCode", "int").ParameterDecl 
+            ParameterDeclC = [paramDecl("message", "string"), paramDecl("errObj", "error")]
           )
+        )
+
+        Result = methodName -> <Result> (:
+          TypeName = "interface{}"
         )
       )
     )
@@ -143,7 +153,7 @@ CodeGenTransform:
         Declaration = title -> <Declaration>(:
           InterfaceType = title -> <InterfaceType>(:
             InterfaceName = title
-            MethodSpec =  epHandlerMethodSpecs(app.endpoints) | [authHeaderMethodSpec("IsAuthorized"), errResponseMethodSpec("SendErrorResponse")]
+            MethodSpec =  epHandlerMethodSpecs(app.endpoints) | [authHeaderMethodSpec("IsAuthorized"), errResponseMethodSpec("GetErrorResponse")]
           )
         )
       )
