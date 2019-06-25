@@ -35,9 +35,7 @@ CodeGenTransform:
     
   !view makeValueExpr(strValue <: string) -> Expression:
     strValue -> (:
-      Expression = strValue -> <Expression>(:
-        ValueExpr = strValue
-      )
+      ValueExpr = strValue
     )
 
   !view paramDecl(identifier <: string, typeName <: string) -> ParameterDecl:
@@ -48,17 +46,15 @@ CodeGenTransform:
 
   !view varDecl(name <: string, typeName <: string) -> VarDecl:
     name -> (:
-      VarDecl = name -> <VarDecl> (:
-        identifier = name
-        TypeName = typeName
-      )
+      identifier = name
+      TypeName = typeName
     )
 
-  !view handleError(condition <: string, errorCode <: string, errorMsg <: string, errorObj <: string) -> Statement:
+  !view handleError(condition <: string, errorCode <: string, errorMsg <: string, errorObj <: string) -> StatementList:
     condition -> (:
       Statement = condition -> <Statement> (:
         IfElseStmt = condition -> <IfElseStmt> (:
-          Expression = makeValueExpr(condition).Expression
+          Expression = makeValueExpr(condition)
           Block = condition -> <Block> (:
             let interfaceCall = condition -> <Statement> (:
               Statement = condition -> <Statement> (:
@@ -68,8 +64,14 @@ CodeGenTransform:
                     FunctionCall = condition -> <ReturnStmt> (:
                       FunctionName = "s.serviceInterface.GetErrorResponse"
                       FunctionArgs = condition -> <FunctionArgs> (:
-                        Expression = makeValueExpr(errorCode).Expression
-                        FuncArgsRest = [makeValueExpr(errorMsg), makeValueExpr(errorObj)]
+                        Expression = makeValueExpr(errorCode)
+                        let errMsgExpr = condition -> <Expression> (:
+                          Expression = makeValueExpr(errorMsg)
+                        )
+                        let errObjExpr = condition -> <Expression> (:
+                          Expression = makeValueExpr(errorObj)
+                        )
+                        FuncArgsRest = [errMsgExpr, errObjExpr]
                       )
                     )
                   )
@@ -81,8 +83,14 @@ CodeGenTransform:
                 FunctionCall = condition -> <ReturnStmt> (:
                   FunctionName = "restlib.SendHTTPResponse"
                   FunctionArgs = condition -> <FunctionArgs> (:
-                    Expression = makeValueExpr("w").Expression
-                    FuncArgsRest = [makeValueExpr('http.StatusBadRequest'), makeValueExpr("errResp")]
+                    Expression = makeValueExpr("w")
+                    let badRequestExpr = condition -> <Expression> (:
+                      Expression = makeValueExpr("http.StatusBadRequest")
+                    )
+                    let errRespExpr = condition -> <Expression> (:
+                      Expression = makeValueExpr("errResp")
+                    )
+                    FuncArgsRest = [badRequestExpr, errRespExpr]
                   )
                 )
               )
@@ -103,10 +111,12 @@ CodeGenTransform:
 
   !view structVarDecl(bodyParams <: BodyParams) -> sequence of StatementList:
     bodyParams -> (param:
-      Statement = varDecl(param.paramName, param.paramType)
+      Statement = param -> <Statement>(:
+        VarDecl =varDecl(param.paramName, param.paramType)
+      )
     )
     
-  !view jsonDecode(bodyParams <: BodyParams, packageName <: string) -> sequence of StatementList:
+  !view jsonDecode(bodyParams <: BodyParams, packageName <: string) -> Block:
     packageName -> (:
       let decodeErr = "decodeErr"
       let decodeStmts = bodyParams -> <StatementList> (param:
@@ -116,7 +126,9 @@ CodeGenTransform:
             Expression = param -> <Expression> (:
               FunctionCall = param -> <FunctionCall> (:
                 FunctionName = "decoder.Decode"
-                FunctionArgs = makeValueExpr("&" + param.paramName)
+                FunctionArgs = param -> <FunctionArgs> (:
+                  Expression = makeValueExpr("&" + param.paramName)
+                )
               )
             )
           )
@@ -170,8 +182,10 @@ CodeGenTransform:
             FunctionCall = param -> <FunctionCall> (:
               FunctionName = methodName
               FunctionArgs = param -> <FunctionArgs> (:
-                Expression = makeValueExpr("r").Expression
-                FuncArgsRest = [makeValueExpr('"' + param.paramName + '"')]
+                Expression = makeValueExpr("r")
+                FuncArgsRest = [param] -> <FuncArgsRest> (:
+                  Expression = makeValueExpr('"' + param.paramName + '"')
+                )
               )
             )
           )
@@ -187,7 +201,7 @@ CodeGenTransform:
       Statement = handleError(condition, errorCode, errMsg, "nil").Statement
     )  
 
-  !view declareHeaders(variableName <: string, typeName <: string, values <: sequence of string) -> Statement:
+  !view declareHeaders(variableName <: string, typeName <: string, values <: sequence of string) -> StatementList:
     typeName -> (:
       Statement = typeName -> <Statement> (:
         DeclareAndAssignStmt = typeName -> <DeclareAndAssignStmt> (:
@@ -205,7 +219,7 @@ CodeGenTransform:
       )
     )
   
-  !view getReqVars(allParams <: AllParams) -> sequence of StatementList:
+  !view getReqVars(allParams <: AllParams) -> Block:
     allParams -> (:
       let qParamStatements = getParamStatements(allParams.QueryParams, "restlib.GetQueryParam")
       let headerStatements = getParamStatements(allParams.HeaderParams, "restlib.GetHeaderParam")
@@ -213,7 +227,7 @@ CodeGenTransform:
       StatementList = qParamStatements | headerStatements | pathParamStatements
     )
 
-  !view getBodyParams(bodyParams <: BodyParams, packageName <: string) -> sequence of StatementList:
+  !view getBodyParams(bodyParams <: BodyParams, packageName <: string) -> Block:
     packageName -> (:
       let decoder = jsonDecoder("decoder")
       let structVarDecl = structVarDecl(bodyParams)
@@ -222,7 +236,7 @@ CodeGenTransform:
       StatementList = [decoder] | structVarDecl | jsonDecode
     )
 
-  !view getAllParams(ep <: sysl.Endpoint) -> sequence of AllParams:
+  !view getAllParams(ep <: sysl.Endpoint) -> AllParams:
     ep -> (:
       let queryParams = ep.value.queryvars -> <QueryParams> (param:
         paramType = ParamType(param).out
@@ -258,7 +272,7 @@ CodeGenTransform:
       AllParams = queryParams flatten(.varName) | pathParams flatten(.varName) | bodyParams flatten(.varName) | reqHeaderParams flatten(.varName) | optHeaderParams flatten(.varName)
     )
 
-  !view jsonDecoder(decoderName <: string) -> Statement:
+  !view jsonDecoder(decoderName <: string) -> StatementList:
     decoderName -> (:
       Statement = decoderName -> <Statement>(:
         DeclareAndAssignStmt = decoderName -> <DeclareAndAssignStmt>(:
@@ -266,14 +280,16 @@ CodeGenTransform:
           Expression = decoderName -> <Expression> (:
             FunctionCall = decoderName -> <FunctionCall> (:
               FunctionName = 'json.NewDecoder'
-              FunctionArgs =  makeValueExpr("r.Body")
+              FunctionArgs = decoderName -> <FunctionArgs> (:
+                Expression = makeValueExpr("r.Body")
+              )
             )
           )
         )
       )
     )
     
-  !view verifyAuthHeaders(ep <: sysl.Endpoint) -> sequence of StatementList:
+  !view verifyAuthHeaders(ep <: sysl.Endpoint) -> Block:
     ep -> (:
       let condition = '!s.serviceInterface.IsAuthorized(r, Authorization)'
       # Following statement causes gosimple error by golangci-lint
@@ -311,47 +327,55 @@ CodeGenTransform:
         let returnValues = if hasPayload then "httpStatus, headerMap, " + ep.value.ret.payload else "httpStatus, headerMap"
         let sendRespCallArgs = if hasPayload then "httpStatus, " + ep.value.ret.payload else "httpStatus"
 
-        let implCall = ep -> <Statement> (:
-          Statement = ep -> <Statement> (:
-            DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
-              Variables = returnValues
-              Expression = ep -> <Expression> (:
-                FunctionCall = ep -> <FunctionCall> (:
-                  FunctionName = "s.serviceInterface." + implFuncName
-                  FunctionArgs = makeValueExpr(Join(allParams.AllParams, ", "))
+
+        Block = ep -> <Block>(:
+
+          let implCall = ep -> <Statement> (:
+            Statement = ep -> <Statement> (:
+              DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
+                Variables = returnValues
+                Expression = ep -> <Expression> (:
+                  FunctionCall = ep -> <FunctionCall> (:
+                    FunctionName = "s.serviceInterface." + implFuncName
+                    FunctionArgs = ep -> <FunctionArgs> (:
+                      Expression = makeValueExpr(Join(allParams.AllParams, ", "))
+                    )
+                  )
                 )
               )
             )
           )
-        )
 
-        let setHeadersCall = ep -> <Statement> (:
-          Statement = ep -> <Statement> (:
-            FunctionCall = ep -> <FunctionCall> (:
-              FunctionName = "restlib.SetHeaders"
-              FunctionArgs = ep -> <FunctionArgs> (:
-                Expression = makeValueExpr("w").Expression
-                FuncArgsRest = [makeValueExpr("headerMap")]
+          let setHeadersCall = ep -> <Statement> (:
+            Statement = ep -> <Statement> (:
+              FunctionCall = ep -> <FunctionCall> (:
+                FunctionName = "restlib.SetHeaders"
+                FunctionArgs = ep -> <FunctionArgs> (:
+                  Expression = makeValueExpr("w")
+                  FuncArgsRest = [ep] -> <FuncArgsRest> (:
+                    Expression = makeValueExpr("headerMap")
+                  )
+                )
               )
             )
           )
-        )
 
-        let sendRespCall = ep -> <Statement> (:
-          Statement = ep -> <Statement> (:
-            FunctionCall = ep -> <FunctionCall> (:
-              FunctionName = "restlib.SendHTTPResponse"
-              FunctionArgs = ep -> <FunctionArgs> (:
-                Expression = makeValueExpr("w").Expression
-                FuncArgsRest = [makeValueExpr(sendRespCallArgs)]
+          let sendRespCall = ep -> <Statement> (:
+            Statement = ep -> <Statement> (:
+              FunctionCall = ep -> <FunctionCall> (:
+                FunctionName = "restlib.SendHTTPResponse"
+                FunctionArgs = ep -> <FunctionArgs> (:
+                  Expression = makeValueExpr("w")
+                  FuncArgsRest = [ep] -> <FuncArgsRest> (:
+                    Expression = makeValueExpr(sendRespCallArgs)
+                  )
+                )
               )
             )
           )
-        )
 
-        let funcCalls = [implCall, setHeadersCall, sendRespCall]
-
-        Block = ep -> <Block>(:
+          let funcCalls = [implCall, setHeadersCall, sendRespCall]
+          
           let commonStmtList = getReqVars(allParams).StatementList | validateHeaders(ep)
           let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then commonStmtList | verifyAuthHeaders(ep).StatementList else commonStmtList
           StatementList = if ep.value.method ==:
@@ -363,9 +387,9 @@ CodeGenTransform:
       )
     )
 
-  !view goFile(app <: sysl.App) -> string:
+  !view goFile(app <: sysl.App) -> goFile:
     app -> (:
-      PackageClause = app -> <package> (:
+      PackageClause = app -> <PackageClause> (:
         let pname = if .attrs.package != null then .attrs.package else app.name
         PackageName = ToLower(pname)
       )

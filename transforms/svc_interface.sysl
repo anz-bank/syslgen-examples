@@ -28,7 +28,7 @@ CodeGenTransform:
       out = typeName
     )
     
-  !view paramDecl(identifier <: string, typeName <: string) -> ParameterDecl:
+  !view paramDecl(identifier <: string, typeName <: string) -> ParameterDeclC:
     identifier -> (:
       ParameterDecl = identifier -> <ParameterDecl>(:
         Identifier = identifier
@@ -132,7 +132,7 @@ CodeGenTransform:
       )
     )
 
-  !view goFile(app <: sysl.App) -> string:
+  !view goFile(app <: sysl.App) -> goFile:
     app -> (:
 
       PackageClause = app -> <package> (:

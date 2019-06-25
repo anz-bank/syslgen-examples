@@ -18,20 +18,18 @@ CodeGenTransform:
     
   !view makeValueExpr(strValue <: string) -> Expression:
     strValue -> (:
-      Expression = strValue -> <Expression>(:
-        ValueExpr = strValue
-      )
+      ValueExpr = strValue
     )
 
-  !view makeFunctionCall(funcName <: string, arg0 <: Expression, rest <: sequence of Expression) -> Statement:
+  !view makeFunctionCall(funcName <: string, arg0 <: ValueExpr, rest <: sequence of ValueExpr) -> StatementList:
     funcName -> (:
       Statement = funcName -> <Statement>(:
         FunctionCall = funcName -> <FunctionCall>(:
           FunctionName = funcName
           FunctionArgs = funcName -> <FunctionArgs> (:
-            Expression = arg0.Expression
+            Expression = arg0
             FuncArgsRest = rest -> <FuncArgsRest> (:
-              Expression = .Expression
+              Expression = .
             )
           )
         )
@@ -59,7 +57,7 @@ CodeGenTransform:
       Statement = makeFunctionCall(funcName, makeValueExpr(epPath), [makeValueExpr(handlerCall)]).Statement
     )
 
-  !view goFile(app <: sysl.App) -> string:
+  !view goFile(app <: sysl.App) -> goFile:
     app -> (:
 
       PackageClause = app -> <package> (:
@@ -97,7 +95,7 @@ CodeGenTransform:
                 Result = name -> <Result> (:
                   TypeName = "*chi.Mux"
                 )
-              )              
+              )      
             )
             
             InterfaceName = title

@@ -78,9 +78,6 @@ CodeGenTransform:
               Signature = receiverName -> <Signature> (:
                 Parameters = true
               )
-              Block = receiverName -> <Block> (:
-                out = ""
-              )
             )
           )
         )
@@ -101,11 +98,9 @@ CodeGenTransform:
 
   !view makeGetArgExpr(lhs <: string, rhs <: string) -> Expression:
     lhs -> (:
-      Expression = lhs -> <Expression>(:
-        GetArg = lhs -> <GetArg>(:
-          LHS = lhs
-          RHS = rhs
-        )
+      GetArg = lhs -> <GetArg>(:
+        LHS = lhs
+        RHS = rhs
       )
     )
 
@@ -118,21 +113,17 @@ CodeGenTransform:
 
   !view makeFunctionZero(funcName <: string) -> Expression:
     funcName -> (:
-      Expression = funcName -> <Expression>(:
-        FunctionCall = funcName -> <FunctionCall>(:
-          FunctionName = funcName
-        )
+      FunctionCall = funcName -> <FunctionCall>(:
+        FunctionName = funcName
       )
     )
 
   !view makeFunctionOneArg(funcName <: string, arg0 <: Expression) -> Expression:
     funcName -> (:
-      Expression = funcName -> <Expression>(:
-        FunctionCall = funcName -> <FunctionCall>(:
-          FunctionName = funcName
-          FunctionArgs = funcName -> <FunctionArgs> (:
-            Expression = arg0.Expression
-          )
+      FunctionCall = funcName -> <FunctionCall>(:
+        FunctionName = funcName
+        FunctionArgs = funcName -> <FunctionArgs> (:
+          Expression = arg0.Expression
         )
       )
     )
@@ -166,7 +157,7 @@ CodeGenTransform:
       formatArgs = '"%s' + Join(path3, "/") + '"'
     )
 
-  !view urlVariable(ep <: sysl.Endpoint) -> DeclareAndAssignStmt:
+  !view urlVariable(ep <: sysl.Endpoint) -> StatementList:
     ep -> (:
       Statement = ep -> <Statement> (:
         DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
@@ -175,15 +166,17 @@ CodeGenTransform:
           let params = ep.value.pathvars -> <string> (:
             Expression =  makeValueExpr(.name).Expression
           )
-          let restArg = [makeGetArgExpr("s", "url")] | params
+          let getArgExpr = ep -> <Expression> (:
+            Expression = makeGetArgExpr("s", "url")
+          )
+          let restArg = [getArgExpr] | params
           let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr(sprintfArg), restArg)
-          Expression = makeFunctionOneArg("url.Parse", sprintfCall).Expression
-
+          Expression = makeFunctionOneArg("url.Parse", sprintfCall)
         )
       )
     )
 
-  !view callRestLib(ep <: string) -> DeclareAndAssignStmt:
+  !view callRestLib(ep <: string) -> StatementList:
     ep -> (:
       Statement = ep -> <Statement> (:
         ReturnStmt = ep -> <ReturnStmt> (:
@@ -197,14 +190,20 @@ CodeGenTransform:
           )
 
           let body2 = if body count == 0 then [nilExpr] else body
-          let restofArgs = [makeGetArgExpr("s", "client"), makeValueExpr('"' + ep.value.method + '"'), makeFunctionZero("u.String")] | body2 | [makeValueExpr("headers"), makeValueExpr("required") , makeValueExpr("responses")]
+          let functionZeroExpr = ep -> <Expression>(:
+            Expression = makeFunctionZero("u.String")
+          )
+          let getArgExpr = ep -> <Expression> (:
+            Expression = makeGetArgExpr("s", "client")
+          )
+          let restofArgs = [getArgExpr, makeValueExpr('"' + ep.value.method + '"'), functionZeroExpr] | body2 | [makeValueExpr("headers"), makeValueExpr("required") , makeValueExpr("responses")]
 
           Expression =  makeFunctionCall("restlib.DoHTTPRequest", makeValueExpr("ctx"), restofArgs).Expression
         )
       )
     )
 
-  !view callHttpMethodWithNoQueryArgs(methodName <: string, ep <: sysl.Endpoint) -> Block:
+  !view callHttpMethodWithNoQueryArgs(methodName <: string, ep <: sysl.Endpoint) -> StatementList:
     ep -> (:
       Statement = ep -> <Statement> (:
         DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
@@ -213,14 +212,20 @@ CodeGenTransform:
           let params = ep.value.pathvars -> <string> (:
             Expression =  makeValueExpr(.name).Expression
           )
-          let restArg = [makeGetArgExpr("s", "url")] | params
+          let getArgExprUrl = ep -> <Expression> (:
+            Expression = makeGetArgExpr("s", "url")
+          )
+          let getArgExprClient = ep -> <Expression> (:
+            Expression = makeGetArgExpr("s", "client")
+          )
+          let restArg = [getArgExprUrl] | params
           let sprintfCall = makeFunctionCall("fmt.Sprintf", makeValueExpr(args.formatArgs), restArg)
-          Expression = makeFunctionCall("restlib.DoHTTPRequest", makeGetArgExpr("s", "client"), [ makeValueExpr("ctx"), makeValueExpr('"' + methodName + '"'), sprintfCall, makeValueExpr("responses")] ).Expression
+          Expression = makeFunctionCall("restlib.DoHTTPRequest", getArgExprClient, [ makeValueExpr("ctx"), makeValueExpr('"' + methodName + '"'), sprintfCall, makeValueExpr("responses")] ).Expression
         )
       )   
     )
 
-  !view declareReturnTypeArray(variableName <: string, typeName <: string, values <: sequence of string) -> DeclareAndAssignStmt:
+  !view declareReturnTypeArray(variableName <: string, typeName <: string, values <: sequence of string) -> StatementList:
     typeName -> (:
       Statement = typeName -> <Statement> (:
         DeclareAndAssignStmt = typeName -> <DeclareAndAssignStmt> (:
@@ -238,7 +243,7 @@ CodeGenTransform:
       )
     )
 
-  !view declareHeaders(variableName <: string, typeName <: string, values <: sequence of string) -> DeclareAndAssignStmt:
+  !view declareHeaders(variableName <: string, typeName <: string, values <: sequence of string) -> StatementList:
     typeName -> (:
       Statement = typeName -> <Statement> (:
         DeclareAndAssignStmt = typeName -> <DeclareAndAssignStmt> (:
@@ -256,7 +261,7 @@ CodeGenTransform:
       )
     )
 
-  !view addToContextCall(variable <: string, methodName <: string) -> Expression:
+  !view addToContextCall(variable <: string, methodName <: string) -> StatementList:
     variable -> (:
       Statement = variable -> <Statement> (:
         AssignStmt = variable -> <AssignStmt> (:
@@ -266,7 +271,7 @@ CodeGenTransform:
       )
     )
 
-  !view returnOutAndErr(name <: string) -> DeclareAndAssignStmt:
+  !view returnOutAndErr(name <: string) -> StatementList:
     name -> (:
       Statement = name -> <Statement> (:
         ReturnStmt = name -> <ReturnStmt> (:
@@ -275,7 +280,7 @@ CodeGenTransform:
       )   
     )
 
-  !view addQueryParams(ep <: sysl.Endpoint) -> sequence of Statement:
+  !view addQueryParams(ep <: sysl.Endpoint) -> sequence of StatementList:
     ep.value.queryvars where (.optional == false) -> (qparam:
       let varName = ToLower(Join(Split(qparam.name, "_"),""))
       let valueExpr = if GoType(qparam).out ==:
@@ -284,7 +289,7 @@ CodeGenTransform:
       Statement = makeFunctionCall("q.Add", makeValueExpr( '"' + qparam.name + '"'), [valueExpr]).Expression
     )
 
-  !view addOptionalQueryParams(ep <: sysl.Endpoint) -> sequence of Statement:
+  !view addOptionalQueryParams(ep <: sysl.Endpoint) -> sequence of StatementList:
     ep.value.queryvars where (.optional == true) -> (qparam:
       let varName = ToLower(Join(Split(qparam.name, "_"),""))
       Statement = qparam -> <Statement> (:
@@ -308,7 +313,7 @@ CodeGenTransform:
       Statement = name -> <Statement> (:
         DeclareAndAssignStmt = name -> <DeclareAndAssignStmt> (:
           Variables = name
-          Expression = makeFunctionZero("u.Query").Expression
+          Expression = makeFunctionZero("u.Query")
         )
       )
     )
@@ -318,7 +323,7 @@ CodeGenTransform:
       Statement = name -> <Statement> (:
         AssignStmt = name -> <AssignStmt> (:
           Variables = "u.RawQuery"
-          Expression = makeFunctionZero("q.Encode").Expression
+          Expression = makeFunctionZero("q.Encode")
         )
       )
     )
@@ -343,7 +348,7 @@ CodeGenTransform:
       )
     )
 
-  !view HttpMethodStatments(ep <: sysl.Endpoint) -> StatementList:
+  !view HttpMethodStatments(ep <: sysl.Endpoint) -> Block:
     ep -> (:
       let requiredHeaders = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns)
       let required = declareHeaders("required", "string", requiredHeaders flatten(.attrs.name))
@@ -355,7 +360,7 @@ CodeGenTransform:
        else stmts | [declareQueryVar("q")] | addQueryParams(ep) | addOptionalQueryParams(ep) | [updateRawQuery("") , callRestLib(ep)]
     )
 
-  !view ClientMethods(appName <: string, eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
+  !view ClientMethods(appName <: string, eps <: set of sysl.Endpoints) -> sequence of TopLevelDecl:
     eps -> (ep:
       let funcName = methodName(ep.value.method, ep.value.path).out
       Comment = '// ' + funcName + ' ...'
@@ -421,7 +426,7 @@ CodeGenTransform:
       Signature = methodSignature(ep)
     )
 
-  !view GoAlias(aliases <: sequence of sysl.Types) -> sequence of Declaration:
+  !view GoAlias(aliases <: sequence of sysl.Types) -> sequence of TopLevelDecl:
     aliases -> (alias:
       let typeName = GoName(alias.key).out
       Comment = '// ' + typeName + ' ...'
@@ -444,7 +449,7 @@ CodeGenTransform:
       )
     )
 
-  !view goFile(app <: sysl.App) -> string:
+  !view goFile(app <: sysl.App) -> goFile:
     app -> (:
 
       PackageClause = app -> <package> (:
