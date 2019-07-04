@@ -1,0 +1,352 @@
+SwiftModel:  
+  !view filename(app <: sysl.App) -> string:
+    app -> (:
+      filename =  "model.swift"
+    )
+
+  !view swiftFile(app <: sysl.App) -> string:
+    app -> (:
+      let imports = Imports(["Alamofire", "Foundation"])
+      let client = Client(app)
+      Statement = imports | Structs(app.types) | [client]
+    )
+
+  !view Imports(names <: sequence of string) -> sequence of Statement:
+    names -> (name:
+      Declaration = name -> <Declaration> (:
+        ImportDecl = name -> <ImportDecl>(:
+          ImportPath = name
+        )
+      )
+    )
+
+  !view SwiftType(t <: sysl.Type) -> string:
+    t -> (:
+      let optional = if t.optional == true && t.type != "sequence" then "?" else ""
+      let typeName = if t.type ==:
+        "primitive" => if t.primitive ==:
+          "DECIMAL" => "Decimal"
+          "INT" => "Int"
+          "FLOAT" => "Float"
+          "STRING" => "String"
+          "STRING_8" => "String"
+          "BOOL" => "Bool"
+          "DATE" => "Date"
+          "DATETIME" => "Date"
+        "sequence" => "[" + SwiftType(t.sequence).out + "]"
+        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then SwiftType(Trim(t.type_ref, "EXTERNAL_")).out else SwiftType(t.type_ref).out
+      out = typeName + optional
+    )
+
+  !view StructFields(fields <: set of Type) -> sequence of StructMember:
+    fields -> (field:
+      Declaration = VarDecl(field.key, SwiftType(field.value).out, null)
+    )
+  
+  !view EnumCase(fields <: set of Type) -> sequence of EnumMember:
+    fields -> (field:
+      EnumCase = field -> <EnumCase> (:
+        let jsonTag = if .value.attrs.json_tag == null then .key else .value.attrs.json_tag
+        EnumCaseName = .key
+        EnumValueAssignment = jsonTag -> <EnumValueAssignment>(value:
+          EnumRawValue = '"' + value + '"'
+        )
+      )
+    )
+
+  !view IdentListOne(firstItem <: string) -> IdentifierList:
+    firstItem -> (:
+      identifier = firstItem
+    )
+
+  !view IdentList(firstItem <: string, rest <: sequence of string) -> IdentifierList:
+    firstItem -> (:
+      identifier = firstItem
+      IdentifierListC = rest -> <IdentifierListC> (item:
+        identifier = item
+      )
+    )
+
+  !view Structs(types <: set of Type) -> sequence of Statement:
+    types -> (type:
+      Declaration = type -> <Declaration> (:
+        StructDecl = type -> <StructDecl>(:
+          StructName = type.key
+          Body = type -> <Body>(:
+            let members = StructFields(.value.fields)
+            let codingKey = type -> <Member> (:
+              Declaration= type -> <Declaration> (:
+                EnumDecl = type -> <EnumDecl> (:
+                  EnumName = 'CodingKeys'
+                  Inherit = type -> <Inherit> (:
+                    IdentifierList = IdentList('String', ['CodingKey'])
+                  )
+                  EnumBlock = type -> <EnumBlock> (:
+                    EnumMember = EnumCase(.value.fields)
+                  )
+                )
+              )
+            )
+            Member = members | [codingKey]
+          )
+        )
+      )
+    )
+
+  !view VarDecl(name <: string, typeName <: string, modifier <: string) -> Declaration:
+    name -> (:
+      VarDecl = name -> <VarDecl>(:
+        Identifier = name
+        TypeName = typeName
+        AccessModifier = modifier
+      )
+    )
+
+  !view makeIdent(name <: string) -> Expression:
+    name -> (:
+      Identifier = name
+    )
+
+  !view AssignVarExpr(name <: string, e <: Expression) -> Statement:
+    name -> (:
+      Expression = name -> <Expression>(:
+        AssignVarExpr = name -> <AssignVarExpr>(:
+          VarName = name
+          Expression = e
+        )
+      )
+    )
+
+  !view DeclareVarExpr(name <: string, e <: Expression) -> Statement:
+    name -> (:
+      Expression = name -> <Expression>(:
+        DeclareVarExpr = name -> <DeclareVarExpr>(:
+          VarName = name
+          Expression = e
+        )
+      )
+    )
+
+  !view SwiftName(word <: string) -> string:
+    word -> (:
+      let splitted = if MatchString("^([A-Z]+[a-z]+|[A-Z]+|[a-z]+)$", word) then [word] else FindAllString("[a-z]+|[A-Z][a-z]+|[A-Z]+", word, -1)
+
+      let wordUpper = splitted -> <sequence of string> (w:
+        out = Title(w)
+      )
+      out = Join(wordUpper flatten(.out), "")
+    )
+
+
+  !view methodName(method <: string, urlPath <: string) -> string:
+    method -> (:
+      let path = Replace(urlPath, "/", "_", -1)
+      let path2 = Replace(path, "{", "", -1)
+      let path3 = Replace(path2, "}", "", -1)
+      out = SwiftName(Title(ToLower(method)) + path3).out
+    )
+
+  !view makeParam(name <: string, typeName <: string) -> Parameter:
+    name -> (:
+      Label = "_"
+      ParamName = name
+      TypeName = typeName
+    )
+
+  !view varName(name <: string) -> string:
+    name -> (:
+      out = ToLower(Join(Split(name, "_"), ""))
+    )
+
+  !view methodParams(params <: sysl.Params) -> sequence of ParameterC:
+    params -> (param:
+      Parameter = makeParam(varName(param.name).out, SwiftType(param).out)
+    )
+
+  !view makeFuncCall(name <: string, identList <: IdentifierList) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+        IdentifierList = identList
+      )
+    )
+
+  !view makeFuncCallOneExpr(name <: string, arg <: string) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+        IdentifierList = IdentListOne(arg)
+      )
+    )
+
+  !view makeFuncCallZeroExpr(name <: string) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+      )
+    )
+
+  !view makeFunctionStmt(func <: FunctionCall) -> Statement:
+    func -> (:
+      Expression = func
+    )
+  
+  !view makeStmt(decl <: Declaration) -> Statement:
+    decl -> (:
+      Declaration = decl
+    )
+  
+  !view queryVarCall(ep <: sysl.Endpoint) -> sequence of Statement:
+    ep.value.queryvars -> (q:
+      FunctionCall = q -> <FunctionCall>(:
+        FunctionName = "URLQueryItem"
+        IdentifierList = IdentList('"' + q.name + '"', [varName(q.name).out])
+      )
+    )
+
+  !view queryVars(ep <: sysl.Endpoint) -> Statement:
+    ep -> (:
+      Expression = ep -> <ArrayLiteral>(:
+        ArrayLiteral = ep -> <Expression>(:
+          ExpressionList = queryVarCall(ep)
+        )
+      )
+    )
+
+  !view paramValue(p <: sysl.Param) -> string:
+    p -> (:
+      let unwrap = if p.optional == true then '!' else ''
+      let varName = varName(p.name).out
+      out = if p.type ==:
+        "primitive" => if p.primitive == "STRING" then  varName + unwrap else '"\(' + varName + unwrap + ')"'
+        else '"\(' + varName + unwrap + ')"'
+    )
+
+  !view addOptionalQueryVars(q <: sysl.Param) -> Expression:
+    q -> (:
+      IfElseExpr = q -> <IfElseExpr>(:
+        let argName = varName(q.name).out
+        Predicate =  argName + " != nil"
+        StmtBlock = q -> <StmtBlock> (:
+          let argList = IdentList( "name:" + '"' + q.name + '"', [ "value:" + paramValue(q).out])
+          let p = DeclareVarExpr("p", makeFuncCall("URLQueryItem", argList))
+          let stmtAdd = makeFunctionStmt(makeFuncCallOneExpr("queryItems.append", "p"))
+          Statement = [p, stmtAdd]
+        )
+      )
+    )
+
+  !view addRequiredQueryVars(q <: sysl.Param) -> Expression:
+    q -> (:
+      FunctionCall = q -> <FunctionCall>(:
+        let argName = varName(q.name).out
+        let argList = IdentList( "name:" + '"' + q.name + '"', [ "value:" + paramValue(q).out])
+
+        FunctionName = "queryItems.append"
+        IdentifierList = q -> <IdentifierList>(:
+          Expression = makeFuncCall("URLQueryItem", argList)
+        )
+        NewLine = "\n"
+      )
+    )
+
+  !view buildQueryItems(ep <: sysl.Endpoint) -> sequence of Expression:
+    ep.value.queryvars -> (q:
+      Expression = if q.optional ==:
+        true => addOptionalQueryVars(q)
+        else addRequiredQueryVars(q)
+    )
+
+  !view clientMethodStatements(ep <: sysl.Endpoint) -> StmtBlock:
+    ep -> (:
+      let urlComponent = DeclareVarExpr("urlComponent", makeFuncCallZeroExpr("URLComponents"))
+      let queryItems = DeclareVarExpr("queryItems", makeFuncCallZeroExpr("[URLQueryItem]"))
+      let scheme = AssignVarExpr("urlComponent.scheme", makeIdent('self.scheme'))
+      let host = AssignVarExpr("urlComponent.host", makeIdent('self.hostName'))
+      let assignQueryItems = AssignVarExpr("urlComponent.queryItems", makeIdent('queryItems'))
+      let path = AssignVarExpr("urlComponent.path", makeIdent(buildURL(ep).out))
+      let request = DeclareVarExpr("req", makeFuncCallOneExpr('Alamofire.request', "urlComponent.url!"))
+      let queryExpr= buildQueryItems(ep)
+
+      Statement = [urlComponent, queryItems, scheme, host, path] | queryExpr | [assignQueryItems, request]
+    )
+  
+  !view buildURL(ep <: sysl.Endpoint) -> string:
+    ep -> (:
+      let p1 = Replace(ep.value.path, '{', '\(', -1)
+      let p2 = Replace(p1, '}', ')', -1)
+      out = '"' + p2 + '"'
+    )
+  
+  !view clientMethods(eps <: sysl.Endpoint) -> sequence of Member:
+    eps -> (ep:
+      Declaration = ep -> <Declaration>(:
+        FuncDecl = ep -> <FuncDecl>(:
+          FuncName = methodName(ep.value.method, ep.value.path).out
+          Parameters = ep -> <Parameters>(:
+            Parameter = ep -> <Parameter>(:
+              Label = "_"
+              ParamName= "headers"
+              TypeName = "[String: String]"
+            )
+            let closure = ep -> <Parameters>(:
+              Parameter = ep -> <Parameter>(:
+                Label = "_"
+                ParamName= "closure"
+                TypeName = "(" + ep.value.ret.payload + ")->Void"
+              )
+            )
+            let paramList = ep.value.pathvars | ep.value.queryvars
+            ParameterC = methodParams(paramList) | [closure]
+          )
+          StmtBlock = clientMethodStatements(ep) 
+        )
+      )
+    )
+  
+  !view declareFunc(name <: string, modifier <: string, params <: Parameters, stmts <: StmtBlock) -> Member:
+    name -> (:
+      Declaration = name -> <Declaration>(:
+        InitFuncDecl = name -> <InitFuncDecl>(:
+          AccessModifier = modifier
+          FuncName = name
+          Parameters = params
+          StmtBlock = stmts
+        )
+      )
+    )
+
+  !view variable(name <: string, typeName <: string, modifier <: string) -> Member:
+    name -> (:
+      Declaration = VarDecl(name, typeName, modifier)
+    )
+
+  !view clientBody(app <: sysl.App) -> Body:
+    app -> (:
+      let scheme = variable('scheme', 'String', 'private')
+      let hostname = variable('hostName', 'String', 'private')
+      let initParameters = app -> <Parameters>(:
+        Parameter = makeParam('scheme', 'String')
+        ParameterC = [app] -> <ParameterC>(:
+          Parameter = makeParam('hostname', 'String')
+        )
+      )
+      let block = app -> <Statement>(:
+        let sc = AssignVarExpr('self.scheme', makeIdent('scheme'))
+        let host = AssignVarExpr('self.hostName', makeIdent('hostname'))
+        Statement = [sc, host]
+      )
+      let initFunc = declareFunc('init', 'public', initParameters, block)
+
+      Member = [scheme, hostname, initFunc] | clientMethods(app.endpoints)
+    )
+
+  !view Client(app <: sysl.App) -> Statement:
+    app -> (:
+      Declaration = app -> <Declaration>(:
+        ClassDecl = app -> <ClassDecl>(:
+          ClassName='Client'
+          Body = clientBody(app) 
+        )
+      )
+    )
