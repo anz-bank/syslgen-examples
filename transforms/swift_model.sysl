@@ -8,7 +8,7 @@ SwiftModel:
     app -> (:
       let imports = Imports(["Alamofire", "Foundation"])
       let client = Client(app)
-      Statement = imports | Structs(app.types) | [client]
+      Statement = imports | Structs(app.types) | Alias(app.alias) | [client]
     )
 
   !view Imports(names <: sequence of string) -> sequence of Statement:
@@ -34,7 +34,7 @@ SwiftModel:
           "DATE" => "Date"
           "DATETIME" => "Date"
         "sequence" => "[" + SwiftType(t.sequence).out + "]"
-        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then SwiftType(Trim(t.type_ref, "EXTERNAL_")).out else SwiftType(t.type_ref).out
+        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then SwiftName(Trim(t.type_ref, "EXTERNAL_")).out else SwiftName(t.type_ref).out
       out = typeName + optional
     )
 
@@ -50,6 +50,18 @@ SwiftModel:
         EnumCaseName = .key
         EnumValueAssignment = jsonTag -> <EnumValueAssignment>(value:
           EnumRawValue = '"' + value + '"'
+        )
+      )
+    )
+
+  !view Alias(aliases <: sequence of sysl.Types) -> sequence of Statement:
+    aliases -> (alias:
+      Declaration = alias -> <Declaration>(:
+        let typeName = SwiftName(alias.key).out
+
+        TypeAlias = alias -> <TypeAlias>(:
+          TypeName = typeName
+          ExistingType = SwiftType(.value).out
         )
       )
     )

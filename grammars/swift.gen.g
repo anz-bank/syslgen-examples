@@ -8,7 +8,7 @@ ArrayLiteral: '[' ExpressionList ']';
 ExpressionList: Expression ExpressionC*;
 ExpressionC: ',' Expression;
 IfElseExpr: 'if' Predicate StmtBlock;
-Declaration: StructDecl | ImportDecl | ConstantDecl | VarDecl | EnumDecl | ClassDecl | FuncDecl | InitFuncDecl;
+Declaration: StructDecl | ImportDecl | ConstantDecl | VarDecl | EnumDecl | ClassDecl | FuncDecl | InitFuncDecl | TypeAlias;
 
 ImportDecl: Attribute* 'import' ImportKind? ImportPath '\n';
 ImportKind: 'typealias' | 'struct' | 'class' | 'enum' | 'protocol' | 'let' | 'var' | 'func';
@@ -17,6 +17,8 @@ ConstantDecl: AccessModifier? 'let' Identifier ':' TypeName;
 VarDecl: AccessModifier? 'var' Identifier ':' TypeName '\n';
 DeclareVarExpr: 'var' VarName '=' Expression '\n';
 AssignVarExpr: VarName '=' Expression '\n';
+
+TypeAlias: 'typealias' TypeName '=' ExistingType '\n';
 
 FuncDecl: AccessModifier? 'func' FuncName '(' Parameters? ')' StmtBlock?;
 InitFuncDecl: AccessModifier? FuncName '(' Parameters? ')' StmtBlock?;
