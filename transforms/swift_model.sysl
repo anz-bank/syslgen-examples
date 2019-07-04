@@ -248,7 +248,7 @@ SwiftModel:
     q -> (:
       IfElseExpr = q -> <IfElseExpr>(:
         let argName = varName(q.name).out
-        Predicate =  argName + " != nil"
+        Expression =  makePredExpr(makeIdent(argName), "!=", makeIdent("nil"))
         StmtBlock = q -> <StmtBlock> (:
           let argList = IdentList( "name:" + '"' + q.name + '"', [ "value:" + paramValue(q).out])
           let p = DeclareVarExpr("p", makeFuncCall("URLQueryItem", argList))
@@ -278,6 +278,35 @@ SwiftModel:
         true => addOptionalQueryVars(q)
         else addRequiredQueryVars(q)
     )
+  
+  !view responseJson(ep <: sysl.Endpoint) -> Statement:
+    ep -> (:
+      Expression = ep -> <Expression> (:
+        FunctionCall = ep -> <FunctionCall>(:
+          FunctionName = 'req.responseJSON'
+          IdentifierList = ep -> <IdentifierList>(:
+            identifier = 'queue: queue'
+          )
+          ClosureExpr = ep -> <ClosureExpr> (:
+            ClosureSignature = ep -> <ClosureSignature>(:
+              IdentifierList = IdentListOne('response')
+            )
+            let ifelse = ep -> <Statement> (:
+              Expression = ep -> <Expression> (:
+                IfElseExpr = ep -> <IfElseExpr>(:
+                  Expression = DeclareLetExpr('json', makeIdent('response.data')).Expression
+                  StmtBlock = ep -> <StmtBlock>(:
+                      let decoder = DeclareLetExpr("decoder", makeFuncCallZeroExpr("JSONDecoder"))
+                      Statement = [decoder]
+                  )
+                )
+              )
+            )
+            Statement = [ifelse]
+          )
+        )
+      )
+    )
 
   !view clientMethodStatements(ep <: sysl.Endpoint) -> StmtBlock:
     ep -> (:
@@ -289,8 +318,10 @@ SwiftModel:
       let path = AssignVarExpr("urlComponent.path", makeIdent(buildURL(ep).out))
       let request = DeclareLetExpr("req", makeFuncCallOneExpr('Alamofire.request', "urlComponent.url!"))
       let queryExpr= buildQueryItems(ep)
-
-      Statement = [urlComponent, queryItems, scheme, host, path] | queryExpr | [assignQueryItems, request]
+      let responseJson = responseJson(ep)
+      let preStatements = [urlComponent, queryItems, scheme, host, path]
+      let postStatements = [assignQueryItems, request, responseJson]
+      Statement = preStatements | queryExpr | postStatements
     )
   
   !view buildURL(ep <: sysl.Endpoint) -> string:
@@ -369,6 +400,19 @@ SwiftModel:
         ClassDecl = app -> <ClassDecl>(:
           ClassName='Client'
           Body = clientBody(app) 
+        )
+      )
+    )
+
+  !view makePredExpr(lhs <: Expression, op <: string, rhs <: Expression) -> Expression:
+    lhs -> (:
+      PredicateExpr = lhs -> <PredicateExpr>(:
+        Lhs = lhs -> <Expression>(:
+          Expression = lhs
+        )
+        CompareOp = op
+        Rhs = rhs -> <Expression>(:
+          Expression = rhs
         )
       )
     )

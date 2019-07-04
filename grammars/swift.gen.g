@@ -2,12 +2,15 @@ swiftFile: Statement*;
 
 Statement: Declaration | Expression ;
 
-Expression: DeclareVarExpr | DeclareLetExpr | AssignVarExpr | FunctionCall | Identifier | ArrayLiteral | IfElseExpr;
-FunctionCall: FunctionName '(' IdentifierList? ')' StmtBlock? NewLine?;
+Expression: DeclareVarExpr | DeclareLetExpr | AssignVarExpr | FunctionCall | Identifier | ArrayLiteral | IfElseExpr | PredicateExpr;
+FunctionCall: FunctionName '(' IdentifierList? ')' ClosureExpr? NewLine?;
 ArrayLiteral: '[' ExpressionList ']';
 ExpressionList: Expression ExpressionC*;
 ExpressionC: ',' Expression;
-IfElseExpr: 'if' Predicate StmtBlock;
+IfElseExpr: 'if' Expression StmtBlock;
+PredicateExpr: Lhs CompareOp Rhs;
+Lhs: Expression;
+Rhs: Expression;
 Declaration: StructDecl | ImportDecl | ConstantDecl | VarDecl | EnumDecl | ClassDecl | FuncDecl | InitFuncDecl | TypeAlias;
 
 ImportDecl: Attribute* 'import' ImportKind? ImportPath '\n';
@@ -27,7 +30,8 @@ Parameters: Parameter ParameterC*;
 ParameterC: ',' Parameter;
 Parameter: Attribute? Label? ParamName ':' TypeName;
 StmtBlock: '{' '\n' Statement* '\n}' '\n';
-
+ClosureExpr: '{' ClosureSignature?  Statement* '\n}' '\n';
+ClosureSignature: IdentifierList 'in' '\n';
 StructDecl: 'struct' StructName Body;
 Body: '{' '\n' Member+ '}' '\n';
 Member: '\t' Declaration;
