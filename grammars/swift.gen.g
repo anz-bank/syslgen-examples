@@ -2,7 +2,7 @@ swiftFile: Statement*;
 
 Statement: Declaration | Expression ;
 
-Expression: DeclareVarExpr | AssignVarExpr | FunctionCall | Identifier | ArrayLiteral | IfElseExpr;
+Expression: DeclareVarExpr | DeclareLetExpr | AssignVarExpr | FunctionCall | Identifier | ArrayLiteral | IfElseExpr;
 FunctionCall: FunctionName '(' IdentifierList? ')' StmtBlock? NewLine?;
 ArrayLiteral: '[' ExpressionList ']';
 ExpressionList: Expression ExpressionC*;
@@ -16,6 +16,7 @@ ImportKind: 'typealias' | 'struct' | 'class' | 'enum' | 'protocol' | 'let' | 'va
 ConstantDecl: AccessModifier? 'let' Identifier ':' TypeName;
 VarDecl: AccessModifier? 'var' Identifier ':' TypeName '\n';
 DeclareVarExpr: 'var' VarName '=' Expression '\n';
+DeclareLetExpr: 'let' VarName '=' Expression '\n';
 AssignVarExpr: VarName '=' Expression '\n';
 
 TypeAlias: 'typealias' TypeName '=' ExistingType '\n';

@@ -139,6 +139,16 @@ SwiftModel:
       )
     )
 
+  !view DeclareLetExpr(name <: string, e <: Expression) -> Statement:
+    name -> (:
+      Expression = name -> <Expression>(:
+        DeclareLetExpr = name -> <DeclareLetExpr>(:
+          VarName = name
+          Expression = e
+        )
+      )
+    )
+
   !view SwiftName(word <: string) -> string:
     word -> (:
       let splitted = if MatchString("^([A-Z]+[a-z]+|[A-Z]+|[a-z]+)$", word) then [word] else FindAllString("[a-z]+|[A-Z][a-z]+|[A-Z]+", word, -1)
@@ -277,7 +287,7 @@ SwiftModel:
       let host = AssignVarExpr("urlComponent.host", makeIdent('self.hostName'))
       let assignQueryItems = AssignVarExpr("urlComponent.queryItems", makeIdent('queryItems'))
       let path = AssignVarExpr("urlComponent.path", makeIdent(buildURL(ep).out))
-      let request = DeclareVarExpr("req", makeFuncCallOneExpr('Alamofire.request', "urlComponent.url!"))
+      let request = DeclareLetExpr("req", makeFuncCallOneExpr('Alamofire.request', "urlComponent.url!"))
       let queryExpr= buildQueryItems(ep)
 
       Statement = [urlComponent, queryItems, scheme, host, path] | queryExpr | [assignQueryItems, request]
