@@ -1,6 +1,6 @@
 swiftFile: Statement*;
 
-Statement: Declaration | Expression ;
+Statement: Declaration | Expression | DoBlock;
 
 Expression: DeclareVarExpr | DeclareLetExpr | AssignVarExpr | FunctionCall | Identifier | ArrayLiteral | IfElseExpr | PredicateExpr;
 FunctionCall: FunctionName '(' IdentifierList? ')' ClosureExpr? NewLine?;
@@ -11,6 +11,9 @@ IfElseExpr: 'if' Expression StmtBlock;
 PredicateExpr: Lhs CompareOp Rhs;
 Lhs: Expression;
 Rhs: Expression;
+DoBlock: 'do' StmtBlock CatchBlock?;
+CatchBlock: 'catch' WhereClause? StmtBlock;
+WhereClause: 'where' Expression;
 Declaration: StructDecl | ImportDecl | ConstantDecl | VarDecl | EnumDecl | ClassDecl | FuncDecl | InitFuncDecl | TypeAlias;
 
 ImportDecl: Attribute* 'import' ImportKind? ImportPath '\n';

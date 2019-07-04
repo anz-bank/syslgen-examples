@@ -279,6 +279,26 @@ SwiftModel:
         else addRequiredQueryVars(q)
     )
   
+  !view responseJsonDoBlock(ep <: sysl.Endpoint) -> Statement:
+    Split(ep.value.ret.payload, ",") -> (ret:
+      DoBlock = ret -> <DoBlock>(ret:
+        StmtBlock = ep -> <StmtBlock>(:
+          let returnVar = ToLower(ret)
+          let decoder = DeclareLetExpr(returnVar, makeFuncCallTwoExpr("decoder.decode", ret + ".self", "from: json"))
+          let callClosure = makeFunctionStmt(makeFuncCallOneExpr('closure', returnVar))
+          Statement = [decoder, callClosure]
+        )
+      )
+    )
+  
+  !view makeFuncCallTwoExpr(name <: string, arg1 <: string, arg2 <: string) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+        IdentifierList = IdentList(arg1, [arg2])
+      )
+    )
+
   !view responseJson(ep <: sysl.Endpoint) -> Statement:
     ep -> (:
       Expression = ep -> <Expression> (:
@@ -297,7 +317,8 @@ SwiftModel:
                   Expression = DeclareLetExpr('json', makeIdent('response.data')).Expression
                   StmtBlock = ep -> <StmtBlock>(:
                       let decoder = DeclareLetExpr("decoder", makeFuncCallZeroExpr("JSONDecoder"))
-                      Statement = [decoder]
+                      let doblock = responseJsonDoBlock(ep)
+                      Statement = [decoder] | doblock
                   )
                 )
               )
