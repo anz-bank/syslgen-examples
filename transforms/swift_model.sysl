@@ -66,19 +66,6 @@ SwiftModel:
       )
     )
 
-  !view IdentListOne(firstItem <: string) -> IdentifierList:
-    firstItem -> (:
-      identifier = firstItem
-    )
-
-  !view IdentList(firstItem <: string, rest <: sequence of string) -> IdentifierList:
-    firstItem -> (:
-      identifier = firstItem
-      IdentifierListC = rest -> <IdentifierListC> (item:
-        identifier = item
-      )
-    )
-
   !view Structs(types <: set of Type) -> sequence of Statement:
     types -> (type:
       Declaration = type -> <Declaration> (:
@@ -114,41 +101,6 @@ SwiftModel:
       )
     )
 
-  !view makeIdent(name <: string) -> Expression:
-    name -> (:
-      Identifier = name
-    )
-
-  !view AssignVarExpr(name <: string, e <: Expression) -> Statement:
-    name -> (:
-      Expression = name -> <Expression>(:
-        AssignVarExpr = name -> <AssignVarExpr>(:
-          VarName = name
-          Expression = e
-        )
-      )
-    )
-
-  !view DeclareVarExpr(name <: string, e <: Expression) -> Statement:
-    name -> (:
-      Expression = name -> <Expression>(:
-        DeclareVarExpr = name -> <DeclareVarExpr>(:
-          VarName = name
-          Expression = e
-        )
-      )
-    )
-
-  !view DeclareLetExpr(name <: string, e <: Expression) -> Statement:
-    name -> (:
-      Expression = name -> <Expression>(:
-        DeclareLetExpr = name -> <DeclareLetExpr>(:
-          VarName = name
-          Expression = e
-        )
-      )
-    )
-
   !view SwiftName(word <: string) -> string:
     word -> (:
       let splitted = if MatchString("^([A-Z]+[a-z]+|[A-Z]+|[a-z]+)$", word) then [word] else FindAllString("[a-z]+|[A-Z][a-z]+|[A-Z]+", word, -1)
@@ -168,13 +120,6 @@ SwiftModel:
       out = SwiftName(Title(ToLower(method)) + path3).out
     )
 
-  !view makeParam(name <: string, typeName <: string) -> Parameter:
-    name -> (:
-      Label = "_"
-      ParamName = name
-      TypeName = typeName
-    )
-
   !view varName(name <: string) -> string:
     name -> (:
       out = ToLower(Join(Split(name, "_"), ""))
@@ -185,39 +130,7 @@ SwiftModel:
       Parameter = makeParam(varName(param.name).out, SwiftType(param).out)
     )
 
-  !view makeFuncCall(name <: string, identList <: IdentifierList) -> Expression:
-    name -> (:
-      FunctionCall = name -> <FunctionCall>(:
-        FunctionName = name
-        IdentifierList = identList
-      )
-    )
 
-  !view makeFuncCallOneExpr(name <: string, arg <: string) -> Expression:
-    name -> (:
-      FunctionCall = name -> <FunctionCall>(:
-        FunctionName = name
-        IdentifierList = IdentListOne(arg)
-      )
-    )
-
-  !view makeFuncCallZeroExpr(name <: string) -> Expression:
-    name -> (:
-      FunctionCall = name -> <FunctionCall>(:
-        FunctionName = name
-      )
-    )
-
-  !view makeFunctionStmt(func <: FunctionCall) -> Statement:
-    func -> (:
-      Expression = func
-    )
-  
-  !view makeStmt(decl <: Declaration) -> Statement:
-    decl -> (:
-      Declaration = decl
-    )
-  
   !view queryVarCall(ep <: sysl.Endpoint) -> sequence of Statement:
     ep.value.queryvars -> (q:
       FunctionCall = q -> <FunctionCall>(:
@@ -281,24 +194,19 @@ SwiftModel:
   
   !view responseJsonDoBlock(ep <: sysl.Endpoint) -> Statement:
     Split(ep.value.ret.payload, ",") -> (ret:
-      DoBlock = ret -> <DoBlock>(ret:
-        StmtBlock = ep -> <StmtBlock>(:
+      Expression = ret -> <Expression> (:
+        IfElseExpr = ret -> <IfElseExpr>(ret:
           let returnVar = ToLower(ret)
-          let decoder = DeclareLetExpr(returnVar, makeFuncCallTwoExpr("decoder.decode", ret + ".self", "from: json"))
-          let callClosure = makeFunctionStmt(makeFuncCallOneExpr('closure', returnVar))
-          Statement = [decoder, callClosure]
+          Expression = DeclareLetExpr(returnVar, tryFuncCall('try?', makeFuncCallTwoExpr("decoder.decode", ret + ".self", "from: json"))).Expression
+          StmtBlock = ret -> <StmtBlock>(:
+            let callClosure = makeFunctionStmt(makeFuncCallOneExpr('closure', returnVar))
+            let returnStmt = returnStmt(makeIdent(""))
+            Statement = [callClosure]| [returnStmt]
+          )
         )
       )
     )
   
-  !view makeFuncCallTwoExpr(name <: string, arg1 <: string, arg2 <: string) -> Expression:
-    name -> (:
-      FunctionCall = name -> <FunctionCall>(:
-        FunctionName = name
-        IdentifierList = IdentList(arg1, [arg2])
-      )
-    )
-
   !view responseJson(ep <: sysl.Endpoint) -> Statement:
     ep -> (:
       Expression = ep -> <Expression> (:
@@ -318,7 +226,8 @@ SwiftModel:
                   StmtBlock = ep -> <StmtBlock>(:
                       let decoder = DeclareLetExpr("decoder", makeFuncCallZeroExpr("JSONDecoder"))
                       let doblock = responseJsonDoBlock(ep)
-                      Statement = [decoder] | doblock
+                      let callClosure = makeFunctionStmt(makeFuncCallOneExpr('closure', 'nil'))
+                      Statement = [decoder] | doblock | [callClosure]
                   )
                 )
               )
@@ -378,41 +287,28 @@ SwiftModel:
       )
     )
   
-  !view declareFunc(name <: string, modifier <: string, params <: Parameters, stmts <: StmtBlock) -> Member:
-    name -> (:
-      Declaration = name -> <Declaration>(:
-        InitFuncDecl = name -> <InitFuncDecl>(:
-          AccessModifier = modifier
-          FuncName = name
-          Parameters = params
-          StmtBlock = stmts
-        )
-      )
-    )
-
-  !view variable(name <: string, typeName <: string, modifier <: string) -> Member:
-    name -> (:
-      Declaration = VarDecl(name, typeName, modifier)
-    )
-
   !view clientBody(app <: sysl.App) -> Body:
     app -> (:
+      let queue = variable('queue', 'DispatchQueue', 'private')
       let scheme = variable('scheme', 'String', 'private')
       let hostname = variable('hostName', 'String', 'private')
       let initParameters = app -> <Parameters>(:
-        Parameter = makeParam('scheme', 'String')
-        ParameterC = [app] -> <ParameterC>(:
-          Parameter = makeParam('hostname', 'String')
+        let p1 = makeParam('scheme', 'String')
+        let p2 = makeParam('hostname', 'String')
+        Parameter =makeParam('queue', 'DispatchQueue')
+        ParameterC = [p1, p2] -> <ParameterC>(p:
+          Parameter = p
         )
       )
       let block = app -> <Statement>(:
+        let queue1 = AssignVarExpr('self.queue', makeIdent('queue'))
         let sc = AssignVarExpr('self.scheme', makeIdent('scheme'))
         let host = AssignVarExpr('self.hostName', makeIdent('hostname'))
-        Statement = [sc, host]
+        Statement = [queue1, sc, host]
       )
       let initFunc = declareFunc('init', 'public', initParameters, block)
 
-      Member = [scheme, hostname, initFunc] | clientMethods(app.endpoints)
+      Member = [queue, scheme, hostname, initFunc] | clientMethods(app.endpoints)
     )
 
   !view Client(app <: sysl.App) -> Statement:
@@ -435,5 +331,132 @@ SwiftModel:
         Rhs = rhs -> <Expression>(:
           Expression = rhs
         )
+      )
+    )
+
+  !view makeIdent(name <: string) -> Expression:
+    name -> (:
+      Identifier = name
+    )
+
+  !view AssignVarExpr(name <: string, e <: Expression) -> Statement:
+    name -> (:
+      Expression = name -> <Expression>(:
+        AssignVarExpr = name -> <AssignVarExpr>(:
+          VarName = name
+          Expression = e
+        )
+      )
+    )
+
+  !view DeclareVarExpr(name <: string, e <: Expression) -> Statement:
+    name -> (:
+      Expression = name -> <Expression>(:
+        DeclareVarExpr = name -> <DeclareVarExpr>(:
+          VarName = name
+          Expression = e
+        )
+      )
+    )
+
+  !view DeclareLetExpr(name <: string, e <: Expression) -> Statement:
+    name -> (:
+      Expression = name -> <Expression>(:
+        Try = try
+        DeclareLetExpr = name -> <DeclareLetExpr>(:
+          VarName = name
+          Expression = e
+        )
+      )
+    )
+
+  !view tryFuncCall(tryExpr <: string, func <: FunctionCall) -> Expression:
+    tryExpr -> (:
+      Try = tryExpr
+      FunctionCall = func.FunctionCall
+    )
+
+  !view makeFuncCall(name <: string, identList <: IdentifierList) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+        IdentifierList = identList
+      )
+    )
+
+  !view makeFuncCallOneExpr(name <: string, arg <: string) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+        IdentifierList = IdentListOne(arg)
+      )
+    )
+
+  !view makeFuncCallZeroExpr(name <: string) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+      )
+    )
+
+  !view makeFunctionStmt(func <: FunctionCall) -> Statement:
+    func -> (:
+      Expression = func
+    )
+  
+  !view makeStmt(decl <: Declaration) -> Statement:
+    decl -> (:
+      Declaration = decl
+    )
+  
+  !view makeParam(name <: string, typeName <: string) -> Parameter:
+    name -> (:
+      Label = "_"
+      ParamName = name
+      TypeName = typeName
+    )
+
+  !view IdentListOne(firstItem <: string) -> IdentifierList:
+    firstItem -> (:
+      identifier = firstItem
+    )
+
+  !view IdentList(firstItem <: string, rest <: sequence of string) -> IdentifierList:
+    firstItem -> (:
+      identifier = firstItem
+      IdentifierListC = rest -> <IdentifierListC> (item:
+        identifier = item
+      )
+    )
+
+  !view declareFunc(name <: string, modifier <: string, params <: Parameters, stmts <: StmtBlock) -> Member:
+    name -> (:
+      Declaration = name -> <Declaration>(:
+        InitFuncDecl = name -> <InitFuncDecl>(:
+          AccessModifier = modifier
+          FuncName = name
+          Parameters = params
+          StmtBlock = stmts
+        )
+      )
+    )
+
+  !view makeFuncCallTwoExpr(name <: string, arg1 <: string, arg2 <: string) -> Expression:
+    name -> (:
+      FunctionCall = name -> <FunctionCall>(:
+        FunctionName = name
+        IdentifierList = IdentList(arg1, [arg2])
+      )
+    )
+
+  !view variable(name <: string, typeName <: string, modifier <: string) -> Member:
+    name -> (:
+      Declaration = VarDecl(name, typeName, modifier)
+    )
+
+  !view returnStmt(e <: Expression) -> Statement:
+    e -> (:
+      ReturnStmt = e -> <ReturnStmt>(:
+        Expression = e
       )
     )
