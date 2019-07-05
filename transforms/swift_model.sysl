@@ -88,6 +88,10 @@ SwiftModel:
             )
             Member = members | [codingKey]
           )
+          Inherit = type -> <Inherit> (:
+            IdentifierList = IdentListOne('Codable')
+          )
+
         )
       )
     )
@@ -164,7 +168,7 @@ SwiftModel:
         Expression =  makePredExpr(makeIdent(argName), "!=", makeIdent("nil"))
         StmtBlock = q -> <StmtBlock> (:
           let argList = IdentList( "name:" + '"' + q.name + '"', [ "value:" + paramValue(q).out])
-          let p = DeclareVarExpr("p", makeFuncCall("URLQueryItem", argList))
+          let p = DeclareLetExpr("p", makeFuncCall("URLQueryItem", argList))
           let stmtAdd = makeFunctionStmt(makeFuncCallOneExpr("queryItems.append", "p"))
           Statement = [p, stmtAdd]
         )
@@ -226,6 +230,12 @@ SwiftModel:
                   StmtBlock = ep -> <StmtBlock>(:
                       let decoder = DeclareLetExpr("decoder", makeFuncCallZeroExpr("JSONDecoder"))
                       let doblock = responseJsonDoBlock(ep)
+                      let splitPayload = Split(ep.value.ret.payload, ",")
+                      let nils = splitPayload -> <string> (:
+                        out = "nil"
+                      )
+                      let payload = nils flatten(.out)
+                      
                       let callClosure = makeFunctionStmt(makeFuncCallOneExpr('closure', 'nil'))
                       Statement = [decoder] | doblock | [callClosure]
                   )
@@ -240,17 +250,18 @@ SwiftModel:
 
   !view clientMethodStatements(ep <: sysl.Endpoint) -> StmtBlock:
     ep -> (:
+      let needQueryVars = ep.value.queryvars where(.optional == true) count > 0
       let urlComponent = DeclareVarExpr("urlComponent", makeFuncCallZeroExpr("URLComponents"))
       let queryItems = DeclareVarExpr("queryItems", makeFuncCallZeroExpr("[URLQueryItem]"))
       let scheme = AssignVarExpr("urlComponent.scheme", makeIdent('self.scheme'))
       let host = AssignVarExpr("urlComponent.host", makeIdent('self.hostName'))
       let assignQueryItems = AssignVarExpr("urlComponent.queryItems", makeIdent('queryItems'))
       let path = AssignVarExpr("urlComponent.path", makeIdent(buildURL(ep).out))
-      let request = DeclareLetExpr("req", makeFuncCallOneExpr('Alamofire.request', "urlComponent.url!"))
+      let request = DeclareLetExpr("req", makeFuncCallTwoExpr('Alamofire.request', "urlComponent.url!", 'headers:headers'))
       let queryExpr= buildQueryItems(ep)
       let responseJson = responseJson(ep)
-      let preStatements = [urlComponent, queryItems, scheme, host, path]
-      let postStatements = [assignQueryItems, request, responseJson]
+      let preStatements = if needQueryVars == true then [urlComponent, queryItems, scheme, host, path] else [urlComponent, scheme, host, path]
+      let postStatements = if needQueryVars == true then [assignQueryItems, request, responseJson] else [request, responseJson]
       Statement = preStatements | queryExpr | postStatements
     )
   
@@ -274,9 +285,14 @@ SwiftModel:
             )
             let closure = ep -> <Parameters>(:
               Parameter = ep -> <Parameter>(:
+                let p = Split(ep.value.ret.payload, ',')
+                let payload = if p count ==:
+                  1 => ep.value.ret.payload + '?'
+                  else Join(p, "?,")
+
                 Label = "_"
                 ParamName= "closure"
-                TypeName = "(" + ep.value.ret.payload + ")->Void"
+                TypeName = "@escaping (" + payload + ")->Void"
               )
             )
             let paramList = ep.value.pathvars | ep.value.queryvars

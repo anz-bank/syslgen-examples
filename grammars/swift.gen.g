@@ -35,7 +35,7 @@ Parameter: Attribute? Label? ParamName ':' TypeName;
 StmtBlock: '{' '\n' Statement* '\n}' '\n';
 ClosureExpr: '{' ClosureSignature?  Statement* '\n}' '\n';
 ClosureSignature: IdentifierList 'in' '\n';
-StructDecl: 'struct' StructName Body;
+StructDecl: 'struct' StructName Inherit? Body;
 Body: '{' '\n' Member+ '}' '\n';
 Member: '\t' Declaration '\n';
 
