@@ -196,6 +196,17 @@ SwiftModel:
         else addRequiredQueryVars(q)
     )
   
+  !view callClosure(ep <: sysl.Endpoint, matchIt <: string) -> Statement:
+    ep -> (:
+      let splitPayload = Split(ToLower(ep.value.ret.payload), ",")
+      let nils = splitPayload -> <string> (item:
+        out = if item == matchIt then matchIt else "nil"
+      )
+      let payload = nils flatten(.out)
+      let rest = IdentList('response', payload)
+      out = makeFunctionStmt(makeFuncCall('closure', rest))
+    )
+
   !view responseJsonDoBlock(ep <: sysl.Endpoint) -> Statement:
     Split(ep.value.ret.payload, ",") -> (ret:
       Expression = ret -> <Expression> (:
@@ -203,7 +214,7 @@ SwiftModel:
           let returnVar = ToLower(ret)
           Expression = DeclareLetExpr(returnVar, tryFuncCall('try?', makeFuncCallTwoExpr("decoder.decode", ret + ".self", "from: json"))).Expression
           StmtBlock = ret -> <StmtBlock>(:
-            let callClosure = makeFunctionStmt(makeFuncCallOneExpr('closure', returnVar))
+            let callClosure = callClosure(ep, returnVar).out
             let returnStmt = returnStmt(makeIdent(""))
             Statement = [callClosure]| [returnStmt]
           )
@@ -230,19 +241,13 @@ SwiftModel:
                   StmtBlock = ep -> <StmtBlock>(:
                       let decoder = DeclareLetExpr("decoder", makeFuncCallZeroExpr("JSONDecoder"))
                       let doblock = responseJsonDoBlock(ep)
-                      let splitPayload = Split(ep.value.ret.payload, ",")
-                      let nils = splitPayload -> <string> (:
-                        out = "nil"
-                      )
-                      let payload = nils flatten(.out)
-                      
-                      let callClosure = makeFunctionStmt(makeFuncCallOneExpr('closure', 'nil'))
-                      Statement = [decoder] | doblock | [callClosure]
+                      Statement = [decoder] | doblock
                   )
                 )
               )
             )
-            Statement = [ifelse]
+            let callClosure = callClosure(ep, "nil").out
+            Statement = [ifelse, callClosure]
           )
         )
       )
@@ -285,14 +290,14 @@ SwiftModel:
             )
             let closure = ep -> <Parameters>(:
               Parameter = ep -> <Parameter>(:
-                let p = Split(ep.value.ret.payload, ',')
-                let payload = if p count ==:
-                  1 => ep.value.ret.payload + '?'
-                  else Join(p, "?,")
-
+                let p = Split(ep.value.ret.payload, ',') -> <sequence of string>(item:
+                  out = item + "?"
+                )
+                let payload = Join(p flatten(.out), ",")
+                
                 Label = "_"
                 ParamName= "closure"
-                TypeName = "@escaping (" + payload + ")->Void"
+                TypeName = "@escaping (DataResponse<Any>, " + payload + ")->Void"
               )
             )
             let paramList = ep.value.pathvars | ep.value.queryvars
