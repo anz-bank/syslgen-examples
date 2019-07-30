@@ -11,7 +11,7 @@ FieldDecl: '\t' identifier Type? Tag? '\n';
 IdentifierList: identifier IdentifierListC*;
 IdentifierListC: ',' identifier;
 
-VarDeclWithVal: 'var' identifier '=' TypeName '\n';
+VarDeclWithVal: 'var' identifier '=' Expression '\n';
 VarDecl: 'var' identifier TypeName '\n';
 ConstDecl: 'const' '(\n'  ConstSpec '\n)\n';
 ConstSpec: VarName TypeName '=' ConstValue '\n';

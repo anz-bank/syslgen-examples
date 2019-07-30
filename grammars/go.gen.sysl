@@ -60,7 +60,7 @@ Go:
 
   !type VarDeclWithVal:
     identifier <: string
-    TypeName <: string
+    Expression <: Expression
 
   !type VarDecl:
     identifier <: string
