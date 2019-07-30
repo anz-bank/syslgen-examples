@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/anz-bank/syslgen-examples/todos"
 	"net/http"
 	"net/http/httptrace"
-
-	"../todos"
 )
 
 func withTrace(ctx context.Context) context.Context {
@@ -23,13 +22,13 @@ func withTrace(ctx context.Context) context.Context {
 
 func main() {
 	httpClient := http.Client{}
-	client := todos.NewClient(&httpClient, "http://jsonplaceholder.typicode.com")
+	client := todos.NewClient(&httpClient, "http://localhost:8080")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result, err := client.GetTodosID(withTrace(ctx), map[string]string{}, 1)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err.Error())
 	} else {
-		fmt.Printf("Value: \n%+v\n", result.Response)
+		fmt.Printf("Status: %d\nValue: \n%+v\n", result.HTTPResponse.StatusCode, result.Response)
 	}
 }

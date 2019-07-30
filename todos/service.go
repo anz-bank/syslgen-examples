@@ -45,7 +45,7 @@ type Service interface {
 	GetComments(ctx context.Context, headers map[string]string, postid int64) (*restlib.HTTPResult, error)
 	GetPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
 	GetTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error)
-	PostComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error)
+	PostComments(ctx context.Context, headers map[string]string, newpost *Post) (*restlib.HTTPResult, error)
 }
 
 // Client for Todos API
@@ -67,6 +67,7 @@ func (s *Client) GetComments(ctx context.Context, headers map[string]string, pos
 	if err != nil {
 		return nil, err
 	}
+
 	q := u.Query()
 	q.Add("postId", fmt.Sprintf("%v", postid))
 	u.RawQuery = q.Encode()
@@ -81,6 +82,7 @@ func (s *Client) GetPosts(ctx context.Context, headers map[string]string) (*rest
 	if err != nil {
 		return nil, err
 	}
+
 	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
@@ -92,16 +94,18 @@ func (s *Client) GetTodosID(ctx context.Context, headers map[string]string, id i
 	if err != nil {
 		return nil, err
 	}
+
 	return restlib.DoHTTPRequest(ctx, s.client, "GET", u.String(), nil, headers, required, responses)
 }
 
 // PostComments ...
-func (s *Client) PostComments(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
+func (s *Client) PostComments(ctx context.Context, headers map[string]string, newpost *Post) (*restlib.HTTPResult, error) {
 	required := []string{}
 	responses := []interface{}{&Post{}}
 	u, err := url.Parse(fmt.Sprintf("%s/comments", s.url))
 	if err != nil {
 		return nil, err
 	}
-	return restlib.DoHTTPRequest(ctx, s.client, "POST", u.String(), nil, headers, required, responses)
+
+	return restlib.DoHTTPRequest(ctx, s.client, "POST", u.String(), newpost, headers, required, responses)
 }
