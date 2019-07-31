@@ -261,7 +261,7 @@ CodeGenTransform:
         isOptional = true
       )
       let bodyParams = ep.value.params where("body" in .attrs.patterns) -> <BodyParams> (param:
-        paramType = param.type_ref
+        paramType = GoName(param.type_ref).out
         paramName = param.name
         varName = param.name
       )

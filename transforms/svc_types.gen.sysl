@@ -26,7 +26,7 @@ CodeGenTransform:
           "DATE" => "date.Date"
           "DATETIME" => "time.Time"
         "sequence" => "[]" + GoType(t.sequence).out
-        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then GoName(Trim(t.type_ref, "EXTERNAL_")).out else GoName(t.type_ref).out
+        else GoName(t.type_ref).out
       out = IsPtr + typeName
     )
 

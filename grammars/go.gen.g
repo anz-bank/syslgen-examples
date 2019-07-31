@@ -31,7 +31,7 @@ InterfaceType      : 'type' InterfaceName 'interface'  '{\n'  MethodSpec* '}\n\n
 MethodSpec         : '\t' MethodName Signature '\n' | InterfaceTypeName ;
 MethodDecl: 'func' Receiver FunctionName Signature? Block? '\n\n';
 Receiver: '(' ReceiverType ')';
-AliasDecl: 'type' identifier Type? ';\n\n';
+AliasDecl: 'type' identifier Type? '\n\n';
 
 Block: '{\n'  StatementList* '}\n';
 StatementList: '\t' Statement '\n';
