@@ -444,7 +444,7 @@ CodeGenTransform:
       Declaration = name -> <Declaration> (:
         VarDeclWithVal = name -> <VarDeclWithVal> (:
           identifier = name
-          TypeName = typeName
+          Expression = makeValueExpr(typeName).Expression
         )
       )
     )
