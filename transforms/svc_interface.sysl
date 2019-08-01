@@ -58,6 +58,29 @@ CodeGenTransform:
       methodName = GoName(method + Join(methodPostfix flatten(.out), "")).out
     )
     
+  !view panicBlock(methodName <: string) -> StatementList:
+    methodName -> (:
+      StatementList = [methodName] -> <StatementList> (:
+        Statement = methodName -> <Statement> (:
+          FunctionCall = methodName -> <FunctionCall> (:
+            FunctionName = "panic"
+            FunctionArgs = methodName -> <FunctionArgs> (:
+              Expression = methodName -> <Expression> (:
+                FunctionCall = methodName -> <FunctionCall> (:
+                  FunctionName = "errors.New"
+                  FunctionArgs = methodName -> <FunctionArgs> (:
+                    Expression = methodName -> <Expression> (:
+                      ValueExpr = '"not implemented"'
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    
   !view getAllParams(ep <: sysl.Endpoint) -> sequence of AllParams:
     ep -> (:
       let queryParams = ep.value.queryvars -> <QueryParams> (param:
@@ -97,7 +120,37 @@ CodeGenTransform:
         )
       )
     )
-    
+
+  !view epHandlerMethodDecl(eps <: set of sysl.Endpoints, receiverType <: string) -> TopLevelDecl:
+    eps -> (ep:
+      let allParams = getAllParams(ep)
+      let methodName = methodDef(ep).methodName
+      Comment = "// nolint:gocritic\n// "  + methodName + " ..."
+      MethodDecl = ep -> <MethodDecl>(:
+        Receiver = ep -> <Receiver>(:
+          ReceiverType = "d *" + receiverType
+        )
+        FunctionName = methodName
+
+        Signature = ep -> <Signature> (:
+          Parameters = ep -> <Parameters>(:
+            ParameterList = ep -> <ParameterList>(:
+              ParameterDecl = if ep.value.params where("header" in .attrs.patterns) count > 0 then paramDecl(Join(allParams.AllParams, ", "), "string").ParameterDecl else paramDecl(Join(allParams.AllParams, ", "), "").ParameterDecl
+            )
+          )
+          Result = ep -> <Result>(:
+            let resultTypes = Split(ep.value.ret.payload, ', ') -> <sequence of string> (:
+              typeName = '*' + GoName(.).out
+            )
+
+            TypeName = if ep.value.ret.payload == "" then "int, map[string]string" else "(int, map[string]string," + Join(resultTypes flatten(.typeName),", ") + ")"
+          )
+        )
+
+        Block = panicBlock(methodName)
+      )
+    )
+
   !view authHeaderMethodSpec(methodName <: string) -> MethodSpec:
     methodName -> (:
       MethodName = methodName
@@ -112,6 +165,32 @@ CodeGenTransform:
         Result = methodName -> <Result>(:
           TypeName = "bool"
         )
+      )
+    )
+
+  !view authHeaderMethodDecl(methodName <: string, receiverType <: string) -> TopLevelDecl:
+    methodName -> (:
+      Comment = "// nolint:gocritic\n// "  + methodName + " ..."
+      MethodDecl = methodName -> <MethodDecl>(:
+        Receiver = methodName -> <Receiver>(:
+          ReceiverType = "d *" + receiverType
+        )
+        FunctionName = methodName
+
+        Signature = methodName -> <Signature> (:
+          Parameters = methodName -> <Parameters>(:
+            ParameterList = methodName -> <ParameterList>(:
+              ParameterDecl = paramDecl("r", "*http.Request").ParameterDecl
+              ParameterDeclC = [paramDecl("authHeader", "string")]
+            )
+          )
+
+          Result = methodName -> <Result>(:
+            TypeName = "bool"
+          )
+        )
+
+        Block = panicBlock(methodName)
       )
     )
 
@@ -132,6 +211,31 @@ CodeGenTransform:
       )
     )
 
+  !view errResponseMethodDecl(methodName <: string, receiverType <: string) -> TopLevelDecl:
+    methodName -> (:
+      Comment = "// nolint:gocritic\n// "  + methodName + " ..."
+      MethodDecl = methodName -> <MethodDecl>(:
+        Receiver = methodName -> <Receiver>(:
+          ReceiverType = "d *" + receiverType
+        )
+        FunctionName = methodName
+        Signature = methodName -> <Signature> (:
+          Parameters = methodName -> <Parameters>(:
+            ParameterList = methodName -> <ParameterList>(:
+              ParameterDecl = paramDecl("statusCode", "int").ParameterDecl 
+              ParameterDeclC = [paramDecl("message", "string"), paramDecl("errObj", "error")]
+            )
+          )
+
+          Result = methodName -> <Result> (:
+            TypeName = "interface{}"
+          )
+        )
+
+        Block = panicBlock(methodName)
+      )
+    )
+
   !view goFile(app <: sysl.App) -> goFile:
     app -> (:
 
@@ -141,7 +245,7 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let spec = ["net/http"] -> <ImportSpec> (importPath:
+        let spec = ["net/http", "errors"] -> <ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
         ImportSpec = spec
@@ -157,8 +261,51 @@ CodeGenTransform:
           )
         )
       )
+        
+      let structName = "Default" + GoName(.name).out + "Impl "
+
+      let defaultImplStruct = [.name] -> <TopLevelDecl> (name:
+        Comment = "// " + structName + " ..."
+        Declaration = name -> <Declaration>(:
+          StructType = name -> <StructType>(:
+            StructName = structName
+          )
+        )
+      )
+
+      let newDefaultImpl = [.name] -> <TopLevelDecl> (name:
+        let structName = "Default" + GoName(name).out + "Impl"
+        let funcName = "New" + structName
+        Comment = "// " + funcName + " for " + name
+        FunctionDecl = name -> <FunctionDecl>(:
+          FunctionName = funcName
+          Signature = name -> <Signature> (:
+            Parameters = name -> <Parameters>(:
+              ParameterList = name -> <ParameterList>(:
+                ParameterDecl = name -> <ParameterDecl>(:
+                  Identifier = ""
+                  TypeName = ""
+                )
+              )
+            )
+
+            Result = name -> <Result> (:
+              TypeName = "*"+structName
+            )
+          )
+          Block = name -> <Block>(item:
+            StatementList = [item] -> <StatementList>(item:
+              Statement = item -> <Statement> (:
+                ReturnStmt = item -> <ReturnStmt> (:
+                  PayLoad = "&" + structName + "{}"
+                )
+              )
+            )
+          )
+        )
+      )
 
       Comment = "//\n//    THIS IS AUTOGENERATED BY syslgen \n//\n"
-      
-      TopLevelDecl = svcImplInterface
+
+      TopLevelDecl = defaultImplStruct | newDefaultImpl | svcImplInterface | epHandlerMethodDecl(app.endpoints, structName) | [authHeaderMethodDecl("IsAuthorized", structName), errResponseMethodDecl("GetErrorResponse", structName)]
     )
