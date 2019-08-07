@@ -26,7 +26,7 @@ CodeGenTransform:
           "DATE" => "date.Date"
           "DATETIME" => "time.Time"
         "sequence" => "[]" + GoType(t.sequence).out
-        else if HasPrefix(t.type_ref, "EXTERNAL_") == true then GoName(Trim(t.type_ref, "EXTERNAL_")).out else GoName(t.type_ref).out
+        else GoName(t.type_ref).out
       out = IsPtr + typeName
     )
 
@@ -458,16 +458,11 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let spec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/rickb777/date"] -> <ImportSpec> (importPath:
+        let restLib = "github.com/anz-bank/syslgen-examples/restlib"
+        let spec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/rickb777/date", restLib] -> <ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
-        let named = app -> <ImportDecl>(:
-          NamedImport = app -> <NamedImport>(:
-            Name = "restlib"
-            Import = '"' + "github.com/anz-bank/syslgen-examples/lib" + '"'
-          )
-        )
-        ImportSpec = spec | [named]
+        ImportSpec = spec
       )
 
       let unused = [varDecl("_", "time.Parse"), varDecl("_", "date.Parse")]

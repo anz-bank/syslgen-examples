@@ -261,7 +261,7 @@ CodeGenTransform:
         isOptional = true
       )
       let bodyParams = ep.value.params where("body" in .attrs.patterns) -> <BodyParams> (param:
-        paramType = param.type_ref
+        paramType = GoName(param.type_ref).out
         paramName = param.name
         varName = param.name
       )
@@ -395,16 +395,10 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let spec = ["encoding/json", "net/http"] -> <ImportSpec> (importPath:
+        let spec = ["encoding/json", "net/http", "github.com/anz-bank/syslgen-examples/restlib"] -> <ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
-        let named = app -> <ImportDecl>(:
-          NamedImport = app -> <NamedImport>(:
-            Name = "restlib"
-            Import = '"' + "github.com/anz-bank/syslgen-examples/lib" + '"'
-          )
-        )
-        ImportSpec = spec | [named]
+        ImportSpec = spec
       )
 
       let serviceImplVarname = "serviceInterface"

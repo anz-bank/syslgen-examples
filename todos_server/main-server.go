@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 
@@ -13,7 +14,8 @@ func main() {
 	serviceImpl := impl.NewServiceImpl()
 	svcHandler := todos.NewServiceHandler(serviceImpl)
 	serviceRouter := todos.NewServiceRouter(svcHandler)
-	router := serviceRouter.Route()
+	router := chi.NewRouter()
+	serviceRouter.Route(router)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

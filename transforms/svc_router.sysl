@@ -86,14 +86,10 @@ CodeGenTransform:
                 Parameters = name -> <Parameters>(:
                   ParameterList = name -> <ParameterList>(:
                     ParameterDecl = name -> <ParameterDecl>(:
-                      Identifier = ""
-                      TypeName = ""
+                      Identifier = "router"
+                      TypeName = "*chi.Mux"
                     )
                   )
-                )
-
-                Result = name -> <Result> (:
-                  TypeName = "*chi.Mux"
                 )
               )      
             )
@@ -163,39 +159,14 @@ CodeGenTransform:
             Parameters = name -> <Parameters>(:
               ParameterList = name -> <ParameterList>(:
                 ParameterDecl = name -> <ParameterDecl>(:
-                  Identifier = ""
-                  TypeName = ""
+                  Identifier = "router"
+                  TypeName = "*chi.Mux"
                 )
               )
-            )
-
-            Result = name -> <Result> (:
-              TypeName = "*chi.Mux"
             )
           )
           Block = name -> <Block>(:
-            let varDef = name -> <StatementList>(:
-              Statement = name -> <Statement> (:
-                DeclareAndAssignStmt = name -> <DeclareAndAssignStmt> (:
-                  Variables = routerVarname
-                  Expression = name -> <Expression> (:
-                    FunctionCall = name -> <FunctionCall> (:
-                      FunctionName = 'chi.NewRouter'
-                    )
-                  )
-                )
-              )
-            )
-
-            let returnVal = name -> <StatementList>(:
-              Statement = name -> <Statement> (:
-                ReturnStmt = name -> <ReturnStmt> (:
-                  PayLoad = routerVarname
-                )
-              )
-            )
-
-            StatementList = [varDef] | RouteEndpoints(app.endpoints) | [returnVal]
+            StatementList = RouteEndpoints(app.endpoints)
           )
         )
       )

@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"time"
 
-	restlib "github.com/anz-bank/syslgen-examples/lib"
+	"github.com/anz-bank/syslgen-examples/restlib"
 	"github.com/rickb777/date"
 )
 

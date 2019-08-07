@@ -10,7 +10,7 @@ import (
 
 // Router interface for Todos
 type Router interface {
-	Route() *chi.Mux
+	Route(router *chi.Mux)
 }
 
 // ServiceRouter for Todos API
@@ -24,11 +24,9 @@ func NewServiceRouter(svcHandler *ServiceHandler) *ServiceRouter {
 }
 
 // Route ...
-func (r *ServiceRouter) Route() *chi.Mux {
-	router := chi.NewRouter()
+func (r *ServiceRouter) Route(router *chi.Mux) {
 	router.Get("/comments", r.svcHandler.GetCommentsHandler)
 	router.Get("/posts", r.svcHandler.GetPostsHandler)
 	router.Get("/todos/{id}", r.svcHandler.GetTodosIDHandler)
 	router.Post("/comments", r.svcHandler.PostCommentsHandler)
-	return router
 }

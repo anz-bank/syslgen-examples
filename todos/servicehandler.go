@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	restlib "github.com/anz-bank/syslgen-examples/lib"
+	"github.com/anz-bank/syslgen-examples/restlib"
 )
 
 // Handler interface for Todos
