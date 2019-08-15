@@ -30,3 +30,9 @@ func (r *ServiceRouter) Route(router *chi.Mux) {
 	router.Get("/todos/{id}", r.svcHandler.GetTodosIDHandler)
 	router.Post("/comments", r.svcHandler.PostCommentsHandler)
 }
+
+// RouteServices ...
+func RouteServices(router *chi.Mux, serviceInterface ServiceInterface) {
+	svcRouter := NewServiceRouter(NewServiceHandler(serviceInterface))
+	svcRouter.Route(router)
+}

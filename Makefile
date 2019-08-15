@@ -24,7 +24,7 @@ ROUTER_TRANSFORM = transforms/svc_router.sysl
 GRAMMAR = grammars/go.gen.g
 TYPES_TRANSFORM_INPUT = $(TYPES_TRANSFORM) $(GRAMMAR)
 
-gen = $(SYSLGEN) -root-model . -root-transform . -transform $(1) -model examples/$(2).sysl -grammar $(GRAMMAR) -start goFile -outdir $(2)
+gen = $(SYSLGEN) gen --root-model . --root-transform . --transform $(1) --model examples/$(2).sysl --grammar $(GRAMMAR) --start goFile --outdir $(2)
 
 clean/%:
 	-rm $*_client/$*-client
@@ -46,7 +46,7 @@ gotools/%:
 	golangci-lint run $*
 
 generate/%:
-	$(call gen,$(TYPES_TRANSFORM),$*)
-	$(call gen,$(INTERFACE_TRANSFORM),$*)
-	$(call gen,$(HANDLER_TRANSFORM),$*)
+	# $(call gen,$(TYPES_TRANSFORM),$*)
+	# $(call gen,$(INTERFACE_TRANSFORM),$*)
+	# $(call gen,$(HANDLER_TRANSFORM),$*)
 	$(call gen,$(ROUTER_TRANSFORM),$*)
