@@ -46,7 +46,7 @@ gotools/%:
 	golangci-lint run $*
 
 generate/%:
-	# $(call gen,$(TYPES_TRANSFORM),$*)
-	# $(call gen,$(INTERFACE_TRANSFORM),$*)
-	# $(call gen,$(HANDLER_TRANSFORM),$*)
+	$(call gen,$(TYPES_TRANSFORM),$*)
+	$(call gen,$(INTERFACE_TRANSFORM),$*)
+	$(call gen,$(HANDLER_TRANSFORM),$*)
 	$(call gen,$(ROUTER_TRANSFORM),$*)
