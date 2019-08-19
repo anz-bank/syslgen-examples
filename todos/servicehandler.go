@@ -5,6 +5,7 @@ package todos
 //
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -32,23 +33,26 @@ func NewServiceHandler(serviceInterface ServiceInterface) *ServiceHandler {
 // GetCommentsHandler ...
 func (s *ServiceHandler) GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	PostID := restlib.GetQueryParam(r, "postId")
-	httpStatus, headerMap, Posts := s.serviceInterface.GetComments(PostID)
-	restlib.SetHeaders(w, headerMap)
+	var ctx context.Context
+
+	Posts, httpStatus := s.serviceInterface.GetComments(ctx, PostID)
 	restlib.SendHTTPResponse(w, httpStatus, Posts)
 }
 
 // GetPostsHandler ...
 func (s *ServiceHandler) GetPostsHandler(w http.ResponseWriter, r *http.Request) {
-	httpStatus, headerMap, Posts := s.serviceInterface.GetPosts()
-	restlib.SetHeaders(w, headerMap)
+	var ctx context.Context
+
+	Posts, httpStatus := s.serviceInterface.GetPosts(ctx)
 	restlib.SendHTTPResponse(w, httpStatus, Posts)
 }
 
 // GetTodosIDHandler ...
 func (s *ServiceHandler) GetTodosIDHandler(w http.ResponseWriter, r *http.Request) {
 	ID := restlib.GetURLParam(r, "id")
-	httpStatus, headerMap, Todo := s.serviceInterface.GetTodosID(ID)
-	restlib.SetHeaders(w, headerMap)
+	var ctx context.Context
+
+	Todo, httpStatus := s.serviceInterface.GetTodosID(ctx, ID)
 	restlib.SendHTTPResponse(w, httpStatus, Todo)
 }
 
@@ -64,7 +68,8 @@ func (s *ServiceHandler) PostCommentsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	httpStatus, headerMap, Post := s.serviceInterface.PostComments(newPost)
-	restlib.SetHeaders(w, headerMap)
+	var ctx context.Context
+
+	Post, httpStatus := s.serviceInterface.PostComments(ctx, newPost)
 	restlib.SendHTTPResponse(w, httpStatus, Post)
 }

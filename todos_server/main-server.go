@@ -11,11 +11,8 @@ import (
 )
 
 func main() {
-	serviceImpl := impl.NewServiceImpl()
-	svcHandler := todos.NewServiceHandler(serviceImpl)
-	serviceRouter := todos.NewServiceRouter(svcHandler)
 	router := chi.NewRouter()
-	serviceRouter.Route(router)
+	todos.RouteServices(router,impl.NewServiceImpl())
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

@@ -5,6 +5,7 @@ package todos
 //
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
@@ -20,46 +21,46 @@ func NewDefaultTodosImpl() *DefaultTodosImpl {
 
 // ServiceInterface for Todos
 type ServiceInterface interface {
-	GetComments(PostID string) (int, map[string]string, *Posts)
-	GetPosts() (int, map[string]string, *Posts)
-	GetTodosID(ID string) (int, map[string]string, *Todo)
-	PostComments(newPost Post) (int, map[string]string, *Post)
+	GetComments(ctx context.Context, PostID string) (*Posts, int)
+	GetPosts(ctx context.Context) (*Posts, int)
+	GetTodosID(ctx context.Context, ID string) (*Todo, int)
+	PostComments(ctx context.Context, newPost Post) (*Post, int)
 	IsAuthorized(r *http.Request, authHeader string) bool
 	GetErrorResponse(statusCode int, message string, errObj error) interface{}
 }
 
-// nolint:gocritic
 // GetComments ...
-func (d *DefaultTodosImpl) GetComments(PostID string) (int, map[string]string, *Posts) {
+// nolint:gocritic
+func (d *DefaultTodosImpl) GetComments(ctx context.Context, PostID string) (*Posts, int) {
 	panic(errors.New("not implemented"))
 }
 
-// nolint:gocritic
 // GetPosts ...
-func (d *DefaultTodosImpl) GetPosts() (int, map[string]string, *Posts) {
+// nolint:gocritic
+func (d *DefaultTodosImpl) GetPosts(ctx context.Context) (*Posts, int) {
 	panic(errors.New("not implemented"))
 }
 
-// nolint:gocritic
 // GetTodosID ...
-func (d *DefaultTodosImpl) GetTodosID(ID string) (int, map[string]string, *Todo) {
+// nolint:gocritic
+func (d *DefaultTodosImpl) GetTodosID(ctx context.Context, ID string) (*Todo, int) {
 	panic(errors.New("not implemented"))
 }
 
-// nolint:gocritic
 // PostComments ...
-func (d *DefaultTodosImpl) PostComments(newPost Post) (int, map[string]string, *Post) {
+// nolint:gocritic
+func (d *DefaultTodosImpl) PostComments(ctx context.Context, newPost Post) (*Post, int) {
 	panic(errors.New("not implemented"))
 }
 
-// nolint:gocritic
 // IsAuthorized ...
+// nolint:gocritic
 func (d *DefaultTodosImpl) IsAuthorized(r *http.Request, authHeader string) bool {
 	panic(errors.New("not implemented"))
 }
 
-// nolint:gocritic
 // GetErrorResponse ...
+// nolint:gocritic
 func (d *DefaultTodosImpl) GetErrorResponse(statusCode int, message string, errObj error) interface{} {
 	panic(errors.New("not implemented"))
 }

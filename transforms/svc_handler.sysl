@@ -267,9 +267,9 @@ CodeGenTransform:
       )
       QueryParams = queryParams
       PathParams = pathParams
-      HeaderParams = reqHeaderParams | optHeaderParams
+      HeaderParams = reqHeaderParams
       BodyParams = bodyParams
-      AllParams = queryParams flatten(.varName) | pathParams flatten(.varName) | bodyParams flatten(.varName) | reqHeaderParams flatten(.varName) | optHeaderParams flatten(.varName)
+      AllParams = queryParams flatten(.varName) | pathParams flatten(.varName) | bodyParams flatten(.varName)
     )
 
   !view jsonDecoder(decoderName <: string) -> StatementList:
@@ -324,7 +324,7 @@ CodeGenTransform:
 
         let hasPayload = if ep.value.ret.payload != "" then true else false
 
-        let returnValues = if hasPayload then "httpStatus, headerMap, " + ep.value.ret.payload else "httpStatus, headerMap"
+        let returnValues = if hasPayload then ep.value.ret.payload + ", httpStatus" else "httpStatus"
         let sendRespCallArgs = if hasPayload then "httpStatus, " + ep.value.ret.payload else "httpStatus"
 
 
@@ -338,7 +338,7 @@ CodeGenTransform:
                   FunctionCall = ep -> <FunctionCall> (:
                     FunctionName = "s.serviceInterface." + implFuncName
                     FunctionArgs = ep -> <FunctionArgs> (:
-                      Expression = makeValueExpr(Join(allParams.AllParams, ", "))
+                      Expression = makeValueExpr("ctx, " + Join(allParams.AllParams, ", "))
                     )
                   )
                 )
@@ -374,15 +374,21 @@ CodeGenTransform:
             )
           )
 
-          let funcCalls = [implCall, setHeadersCall, sendRespCall]
+          let funcCalls = [implCall, sendRespCall]
+
+          let context = ep -> <Statement> (:
+            Statement = ep -> <Statement> (:
+              VarDecl = varDecl("ctx", "context.Context")
+            )
+          )
           
           let commonStmtList = getReqVars(allParams).StatementList | validateHeaders(ep)
           let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then commonStmtList | verifyAuthHeaders(ep).StatementList else commonStmtList
           StatementList = if ep.value.method ==:
-            "GET" => stmtList | funcCalls
-            "POST" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | funcCalls
-            "PUT" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | funcCalls
-            "DELETE" => stmtList  | funcCalls
+            "GET" => stmtList | [context] | funcCalls
+            "POST" => stmtList | getBodyParams(allParams.BodyParams, packageName).StatementList | [context] | funcCalls
+            "PUT" => stmtList | getBodyParams(allParams.BodyParams, packageName).StatementList | [context] | funcCalls
+            "DELETE" => stmtList | [context] | funcCalls
         )
       )
     )
@@ -395,7 +401,7 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let spec = ["encoding/json", "net/http", "github.com/anz-bank/syslgen-examples/restlib"] -> <ImportSpec> (importPath:
+        let spec = ["context", "encoding/json", "net/http", "github.com/anz-bank/syslgen-examples/restlib"] -> <ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
         ImportSpec = spec
