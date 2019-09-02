@@ -82,7 +82,7 @@ CodeGenTransform:
       )
     )
 
-  !view makeValueExpr(strValue <: string) -> Expression:
+  !view makeValueExpr(strValue <: string) -> FuncArgsRest:
     strValue -> (:
       Expression = strValue -> <Expression>(:
         ValueExpr = strValue
@@ -106,7 +106,7 @@ CodeGenTransform:
       )
     )
     
-  !view makeFunctionCall(funcName <: string, arg0 <: Expression, rest <: sequence of Expression) -> Expression:
+  !view makeFunctionCall(funcName <: string, arg0 <: Expression, rest <: sequence of Expression) -> FuncArgsRest:
     funcName -> (:
       Expression = funcName -> <Expression>(:
         FunctionCall = funcName -> <FunctionCall>(:
@@ -141,10 +141,10 @@ CodeGenTransform:
         DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
           Variables = "u, err"
           let sprintfArg = formatArgs(ep).formatArgs
-          let params = ep.value.pathvars -> <string> (:
+          let params = ep.value.pathvars -> <FuncArgsRest> (:
             Expression =  makeValueExpr(.name).Expression
           )
-          let getArgExpr = ep -> <Expression> (:
+          let getArgExpr = ep -> <FuncArgsRest> (:
             Expression = makeGetArgExpr("s", "url")
           )
           let restArg = [getArgExpr] | params
@@ -159,19 +159,19 @@ CodeGenTransform:
       Statement = ep -> <Statement> (:
         ReturnStmt = ep -> <ReturnStmt> (:
 
-          let body = ep.value.params where("body" in .attrs.patterns) -> <Expression> (:
+          let body = ep.value.params where("body" in .attrs.patterns) -> <FuncArgsRest> (:
             Expression = makeValueExpr(ToLower(Join(Split(.name, "_"), ""))).Expression
           )
           
-          let nilExpr = ep -> <Expression> (:
+          let nilExpr = ep -> <FuncArgsRest> (:
             Expression = makeValueExpr("nil").Expression
           )
 
           let body2 = if body count == 0 then [nilExpr] else body
-          let functionZeroExpr = ep -> <Expression>(:
+          let functionZeroExpr = ep -> <FuncArgsRest>(:
             Expression = makeFunctionZero("u.String")
           )
-          let getArgExpr = ep -> <Expression> (:
+          let getArgExpr = ep -> <FuncArgsRest> (:
             Expression = makeGetArgExpr("s", "client")
           )
           let restofArgs = [getArgExpr, makeValueExpr('"' + ep.value.method + '"'), functionZeroExpr] | body2 | [makeValueExpr("headers"), makeValueExpr("required") , makeValueExpr("responses")]
@@ -187,13 +187,13 @@ CodeGenTransform:
         DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
           Variables = "resp, err"
           let args = buildSprintfCall(ep)
-          let params = ep.value.pathvars -> <string> (:
+          let params = ep.value.pathvars -> <FuncArgsRest> (:
             Expression =  makeValueExpr(.name).Expression
           )
-          let getArgExprUrl = ep -> <Expression> (:
+          let getArgExprUrl = ep -> <FuncArgsRest> (:
             Expression = makeGetArgExpr("s", "url")
           )
-          let getArgExprClient = ep -> <Expression> (:
+          let getArgExprClient = ep -> <FuncArgsRest> (:
             Expression = makeGetArgExpr("s", "client")
           )
           let restArg = [getArgExprUrl] | params
@@ -371,7 +371,7 @@ CodeGenTransform:
             TypeName = "context.Context"
           )
 
-          let httpHeader = ep -> <ParameterDecl>(:
+          let httpHeader = ep -> <ParameterList>(:
             ParameterDecl = ep -> <ParameterDecl>(:
               Identifier = "headers"
               TypeName = "map[string]string"

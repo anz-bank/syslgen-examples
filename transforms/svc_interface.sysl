@@ -58,7 +58,7 @@ CodeGenTransform:
       methodName = GoName(method + Join(methodPostfix flatten(.out), "")).out
     )
     
-  !view panicBlock(methodName <: string) -> StatementList:
+  !view panicBlock(methodName <: string) -> Block:
     methodName -> (:
       StatementList = [methodName] -> <StatementList> (:
         Statement = methodName -> <Statement> (:

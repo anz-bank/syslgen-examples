@@ -13,6 +13,9 @@ gotools: gotools/todos
 .PHONY: generate
 generate: generate/todos
 
+.PHONY: validate
+validate: validate/todos
+
 .PHONY: compile
 compile: todos_client/todos todos_server/todos
 
@@ -26,6 +29,7 @@ GRAMMAR = grammars/go.gen.g
 TYPES_TRANSFORM_INPUT = $(TYPES_TRANSFORM) $(GRAMMAR)
 
 gen = $(SYSLGEN) gen --root-model . --root-transform . --transform $(1) --model examples/$(2).sysl --grammar $(GRAMMAR) --start goFile --outdir $(2)
+validate = $(SYSLGEN) validate --grammar $(GRAMMAR) --start goFile --root-transform . --transform $(1)
 
 clean/%:
 	-rm $*_client/$*-client
@@ -52,3 +56,10 @@ generate/%:
 	$(call gen,$(INTERFACE_TRANSFORM),$*)
 	$(call gen,$(HANDLER_TRANSFORM),$*)
 	$(call gen,$(ROUTER_TRANSFORM),$*)
+
+validate/%:
+	$(call validate,$(TYPES_TRANSFORM),$*)
+	$(call validate,$(CLIENT_TRANSFORM),$*)
+	$(call validate,$(INTERFACE_TRANSFORM),$*)
+	$(call validate,$(HANDLER_TRANSFORM),$*)
+	$(call validate,$(ROUTER_TRANSFORM),$*)

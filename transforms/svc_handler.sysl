@@ -56,7 +56,7 @@ CodeGenTransform:
         IfElseStmt = condition -> <IfElseStmt> (:
           Expression = makeValueExpr(condition)
           Block = condition -> <Block> (:
-            let interfaceCall = condition -> <Statement> (:
+            let interfaceCall = condition -> <StatementList> (:
               Statement = condition -> <Statement> (:
                 DeclareAndAssignStmt = condition -> <DeclareAndAssignStmt> (:
                   Variables = "errResp"
@@ -65,10 +65,10 @@ CodeGenTransform:
                       FunctionName = "s.serviceInterface.GetErrorResponse"
                       FunctionArgs = condition -> <FunctionArgs> (:
                         Expression = makeValueExpr(errorCode)
-                        let errMsgExpr = condition -> <Expression> (:
+                        let errMsgExpr = condition -> <FuncArgsRest> (:
                           Expression = makeValueExpr(errorMsg)
                         )
-                        let errObjExpr = condition -> <Expression> (:
+                        let errObjExpr = condition -> <FuncArgsRest> (:
                           Expression = makeValueExpr(errorObj)
                         )
                         FuncArgsRest = [errMsgExpr, errObjExpr]
@@ -78,16 +78,16 @@ CodeGenTransform:
                 )
               )
             )
-            let sendResp = condition -><Statement> (:
+            let sendResp = condition -><StatementList> (:
               Statement = condition -><Statement> (:
                 FunctionCall = condition -> <ReturnStmt> (:
                   FunctionName = "restlib.SendHTTPResponse"
                   FunctionArgs = condition -> <FunctionArgs> (:
                     Expression = makeValueExpr("w")
-                    let badRequestExpr = condition -> <Expression> (:
+                    let badRequestExpr = condition -> <FuncArgsRest> (:
                       Expression = makeValueExpr("http.StatusBadRequest")
                     )
-                    let errRespExpr = condition -> <Expression> (:
+                    let errRespExpr = condition -> <FuncArgsRest> (:
                       Expression = makeValueExpr("errResp")
                     )
                     FuncArgsRest = [badRequestExpr, errRespExpr]
@@ -96,7 +96,7 @@ CodeGenTransform:
               )
             )
 
-            let returnStmt = condition -> <Statement> (:
+            let returnStmt = condition -> <StatementList> (:
               Statement = condition -> <Statement> (:
                 ReturnStmt = condition -> <ReturnStmt> (:
                   PayLoad = ""
@@ -330,7 +330,7 @@ CodeGenTransform:
 
         Block = ep -> <Block>(:
 
-          let implCall = ep -> <Statement> (:
+          let implCall = ep -> <StatementList> (:
             Statement = ep -> <Statement> (:
               DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
                 Variables = returnValues
@@ -346,7 +346,7 @@ CodeGenTransform:
             )
           )
 
-          let setHeadersCall = ep -> <Statement> (:
+          let setHeadersCall = ep -> <StatementList> (:
             Statement = ep -> <Statement> (:
               FunctionCall = ep -> <FunctionCall> (:
                 FunctionName = "restlib.SetHeaders"
@@ -360,7 +360,7 @@ CodeGenTransform:
             )
           )
 
-          let sendRespCall = ep -> <Statement> (:
+          let sendRespCall = ep -> <StatementList> (:
             Statement = ep -> <Statement> (:
               FunctionCall = ep -> <FunctionCall> (:
                 FunctionName = "restlib.SendHTTPResponse"
