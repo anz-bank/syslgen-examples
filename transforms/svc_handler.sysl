@@ -321,16 +321,103 @@ CodeGenTransform:
             )
           )
         )
-
-        let hasPayload = if ep.value.ret.payload != "" then true else false
-
-        let returnValues = if hasPayload then "httpStatus, headerMap, " + ep.value.ret.payload else "httpStatus, headerMap"
-        let sendRespCallArgs = if hasPayload then "httpStatus, " + ep.value.ret.payload else "httpStatus"
-
-
+        let httpStatus = ep -> <Statement> (:
+          Statement = ep -> <Statement> (:
+            VarDecl = varDecl("httpStatus", "int")
+          )
+        )
+        let resultTypes = ep.value.ret -> <sequence of string> (v:
+            typeName = v.value
+        )
+        let seq = resultTypes flatten(.typeName)        
+        let returnValues = if seq count > 0 then "headerMap, " + Join(resultTypes flatten(.typeName),", ") else "headerMap"
+        let sendRespCallArgs = "httpStatus"
+        let retStatusStatement = ep -> <StatementList> (:
+          StatementList = ep.value.ret -> <StatementList> (v:
+            let condition = v.value + " != nil"
+            Statement = ep -> <Statement> (:
+              IfElseStmt = condition -> <IfElseStmt> (:
+                Expression = makeValueExpr(condition)
+                Block = condition -> <Block> (:
+                  let sendStatus = condition -> <Statement> (:
+                    Statement = condition -> <Statement> (:
+                      AssignStmt = condition -> <AssignStmt> (:
+                        Variables = sendRespCallArgs
+                        Expression = makeValueExpr(v.key)
+                      )
+                    )
+                  )
+                  let errorRes = condition -> <Statement> (:
+                    Statement = condition -> <Statement> (:
+                      DeclareAndAssignStmt = condition -> <DeclareAndAssignStmt> (:
+                        Variables = "errResp"
+                        Expression = condition -> <Expression> (:
+                          FunctionCall = condition -> <Statement> (:
+                            FunctionName = "s.serviceInterface.GetErrorResponse"
+                            FunctionArgs = condition -> <FunctionArgs> (:
+                              Expression = makeValueExpr(sendRespCallArgs)
+                              let errMsgExpr = condition -> <Expression> (:
+                                Expression = makeValueExpr('"Internal server error"')
+                              )
+                              let errObjExpr = condition -> <Expression> (:
+                                Expression = makeValueExpr("nil")
+                              )
+                              FuncArgsRest = [errMsgExpr, errObjExpr]
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                  let sendResErr = condition -> <Statement> (:
+                    Statement = condition -> <Statement> (:
+                      FunctionCall = condition -> <Statement> (:
+                        FunctionName = "restlib.SendHTTPResponse"
+                        FunctionArgs = condition -> <FunctionArgs> (:
+                          Expression = makeValueExpr("w")
+                          let errRespExpr = condition -> <Expression> (:
+                            Expression = makeValueExpr("errResp")
+                          )
+                          let a = condition -> <FuncArgsRest> (:
+                            Expression = makeValueExpr("httpStatus")
+                          )
+                          FuncArgsRest = [a, errRespExpr]
+                        )
+                      )
+                    )
+                  )
+                  let sendRes = condition -> <Statement> (:
+                    Statement = condition -> <Statement> (:
+                      FunctionCall = condition -> <Statement> (:
+                        FunctionName = "restlib.SendHTTPResponse"
+                        FunctionArgs = condition -> <FunctionArgs> (:
+                          Expression = makeValueExpr("w")
+                          let a = condition -> <FuncArgsRest> (:
+                            Expression = makeValueExpr("httpStatus")
+                          )
+                          let b = condition -> <FuncArgsRest> (:
+                            Expression = makeValueExpr(v.value)
+                          )
+                          FuncArgsRest = [a, b]
+                        )
+                      )
+                    )
+                  )
+                  let retStatement = condition -> <Statement> (:
+                    Statement = condition -> <Statement> (:
+                      ReturnStmt = condition -> <ReturnStmt> (:
+                        PayLoad = ""
+                      )
+                    )
+                  )
+                  StatementList = if MatchString("^[4-5][0-9][0-9]$", v.key) then [sendStatus, errorRes, sendResErr, retStatement] else [sendStatus, sendRes, retStatement]
+                )
+              )
+            )
+          )
+        )
         Block = ep -> <Block>(:
-
-          let implCall = ep -> <StatementList> (:
+          let implCall = ep -> <Statement> (:
             Statement = ep -> <Statement> (:
               DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
                 Variables = returnValues
@@ -345,8 +432,7 @@ CodeGenTransform:
               )
             )
           )
-
-          let setHeadersCall = ep -> <StatementList> (:
+          let setHeadersCall = ep -> <Statement> (:
             Statement = ep -> <Statement> (:
               FunctionCall = ep -> <FunctionCall> (:
                 FunctionName = "restlib.SetHeaders"
@@ -359,22 +445,7 @@ CodeGenTransform:
               )
             )
           )
-
-          let sendRespCall = ep -> <StatementList> (:
-            Statement = ep -> <Statement> (:
-              FunctionCall = ep -> <FunctionCall> (:
-                FunctionName = "restlib.SendHTTPResponse"
-                FunctionArgs = ep -> <FunctionArgs> (:
-                  Expression = makeValueExpr("w")
-                  FuncArgsRest = [ep] -> <FuncArgsRest> (:
-                    Expression = makeValueExpr(sendRespCallArgs)
-                  )
-                )
-              )
-            )
-          )
-
-          let funcCalls = [implCall, setHeadersCall, sendRespCall]
+          let funcCalls =  [implCall] | [httpStatus] | [setHeadersCall]| retStatusStatement.StatementList
           
           let commonStmtList = getReqVars(allParams).StatementList | validateHeaders(ep)
           let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then commonStmtList | verifyAuthHeaders(ep).StatementList else commonStmtList

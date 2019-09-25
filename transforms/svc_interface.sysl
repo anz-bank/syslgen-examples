@@ -112,11 +112,11 @@ CodeGenTransform:
           )
         )
         Result = ep -> <Result>(:
-          let resultTypes = Split(ep.value.ret.payload, ', ') -> <sequence of string> (:
-            typeName = '*' + GoName(.).out
+          let resultTypes = ep.value.ret -> <sequence of string> (v:
+            typeName = '*' + v.value
           )
-
-          TypeName = if ep.value.ret.payload == "" then "int, map[string]string" else "(int, map[string]string," + Join(resultTypes flatten(.typeName),", ") + ")"
+          let seq = resultTypes flatten(.typeName)
+          TypeName = if seq count == 0 then "(map[string]string)" else "(map[string]string, " + Join(resultTypes flatten(.typeName),", ") + ")"
         )
       )
     )
