@@ -300,6 +300,16 @@ CodeGenTransform:
       StatementList = [handleError(condition, errorCode, errMsg, "nil")]
     )
 
+  !view splitPayload(payload <: set of string) -> sequence of string:
+    payload -> (:
+      typeName = GoName(.).out
+    )
+
+  !view splitReturnTypes(types <: map) -> sequence of string:
+    types -> (v:
+      typeName = GoName(v.value).out
+    )
+
   !view EpHandlerMethodDecl(eps <: set of sysl.Endpoints, packageName <: string) -> sequence of TopLevelDecl:
     eps -> (ep:
       let implFuncName = methodDef(ep).methodName
@@ -326,11 +336,10 @@ CodeGenTransform:
             VarDecl = varDecl("httpStatus", "int")
           )
         )
-        let resultTypes = ep.value.ret -> <sequence of string> (v:
-            typeName = v.value
-        )
-        let seq = resultTypes flatten(.typeName)        
-        let returnValues = if seq count > 0 then "headerMap, " + Join(resultTypes flatten(.typeName),", ") else "headerMap"
+        let resultTypes = if ep.value.ret.payload == null then splitReturnTypes(ep.value.ret) else splitPayload(Split(ep.value.ret.payload, ', '))
+        let tempReturnValues = if resultTypes count > 0 then "headerMap, " + Join(resultTypes flatten(.typeName),", ") else "headerMap"
+        let returnValues = if ep.value.ret.payload == null then tempReturnValues else "Status, " + tempReturnValues
+        
         let sendRespCallArgs = "httpStatus"
         let retStatusStatement = ep -> <StatementList> (:
           StatementList = ep.value.ret -> <StatementList> (v:
@@ -445,7 +454,23 @@ CodeGenTransform:
               )
             )
           )
-          let funcCalls =  [implCall] | [httpStatus] | [setHeadersCall]| retStatusStatement.StatementList
+          let sendResExist = ep -> <Statement> (:
+            Statement = ep -> <Statement> (:
+              let values = if ep.value.ret.payload != null then splitPayload(Split("status, " + ep.value.ret.payload, ', ')) else splitReturnTypes(ep.value.ret)
+              FunctionCall = ep -> <Statement> (:
+                FunctionName = "restlib.SendHTTPResponse"
+                FunctionArgs = ep -> <FunctionArgs> (:
+                  Expression = makeValueExpr("w")
+                  let restParams = values -> <Expression>(v:
+                    Expression = makeValueExpr(v.typeName)
+                  )
+                  FuncArgsRest = restParams
+                ) 
+              )
+            )
+          )
+
+          let funcCalls =  if ep.value.ret.payload == null then [implCall] | [httpStatus] | [setHeadersCall]| retStatusStatement.StatementList else [implCall] | [setHeadersCall] | [sendResExist]
           
           let commonStmtList = getReqVars(allParams).StatementList | validateHeaders(ep)
           let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then commonStmtList | verifyAuthHeaders(ep).StatementList else commonStmtList
