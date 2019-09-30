@@ -211,8 +211,8 @@ CodeGenTransform:
           Expression = typeName -> <Expression> (:
             NewSlice = typeName -> <NewSlice> (:
               TypeName = typeName
-              let v = values -> <sequence of string> (:
-                out = '&' + GoName(.).out + '{}'
+              let v = values -> <sequence of string> (v:
+                out = '&' + v.type + '{}'
               )
               SliceValues = Join(v flatten(.out), ',')
             )
@@ -326,11 +326,22 @@ CodeGenTransform:
       )
     )
 
+  !view splitPayload(payload <: set of string) -> sequence of string:
+    payload -> (:
+      type = GoName(.).out
+    )
+
+  !view splitReturnTypes(types <: map) -> sequence of string:
+    types -> (v:
+      type = GoName(v.value).out
+    )  
+
   !view HttpMethodStatments(ep <: sysl.Endpoint) -> Block:
     ep -> (:
       let requiredHeaders = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns)
       let required = declareHeaders("required", "string", requiredHeaders flatten(.attrs.name))
-      let responses = declareReturnTypeArray("responses", "interface{}", Split(ep.value.ret.payload, ', '))
+      let resultTypes = if ep.value.ret.payload == null then splitReturnTypes(ep.value.ret) else splitPayload(Split(ep.value.ret.payload, ', '))
+      let responses = declareReturnTypeArray("responses", "interface{}", resultTypes)
 
       let stmts =  [required, responses, urlVariable(ep), returnIfError("err", "nil, err")]
       StatementList = if ep.value.queryvars count ==:

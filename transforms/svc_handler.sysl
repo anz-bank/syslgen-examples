@@ -315,6 +315,7 @@ CodeGenTransform:
       let implFuncName = methodDef(ep).methodName
       let funcName = implFuncName + "Handler"
       let allParams = getAllParams(ep)
+      let hasNoPayload = if ep.value.ret.payload == null then true else false
       Comment = '// ' + funcName + ' ...'
       MethodDecl = ep -> <MethodDecl>(:
         Receiver = ep -> <Receiver>(:
@@ -331,16 +332,16 @@ CodeGenTransform:
             )
           )
         )
+        let httpStatusString = "httpStatus"
         let httpStatus = ep -> <Statement> (:
           Statement = ep -> <Statement> (:
-            VarDecl = varDecl("httpStatus", "int")
+            VarDecl = varDecl(httpStatusString, "int")
           )
         )
-        let resultTypes = if ep.value.ret.payload == null then splitReturnTypes(ep.value.ret) else splitPayload(Split(ep.value.ret.payload, ', '))
+        let resultTypes = if hasNoPayload then splitReturnTypes(ep.value.ret) else splitPayload(Split(ep.value.ret.payload, ', '))
         let tempReturnValues = if resultTypes count > 0 then "headerMap, " + Join(resultTypes flatten(.typeName),", ") else "headerMap"
-        let returnValues = if ep.value.ret.payload == null then tempReturnValues else "Status, " + tempReturnValues
-        
-        let sendRespCallArgs = "httpStatus"
+        let returnValues = if hasNoPayload then tempReturnValues else "Status, " + tempReturnValues
+    
         let retStatusStatement = ep -> <StatementList> (:
           StatementList = ep.value.ret -> <StatementList> (v:
             let condition = v.value + " != nil"
@@ -351,7 +352,7 @@ CodeGenTransform:
                   let sendStatus = condition -> <Statement> (:
                     Statement = condition -> <Statement> (:
                       AssignStmt = condition -> <AssignStmt> (:
-                        Variables = sendRespCallArgs
+                        Variables = httpStatusString
                         Expression = makeValueExpr(v.key)
                       )
                     )
@@ -364,7 +365,7 @@ CodeGenTransform:
                           FunctionCall = condition -> <Statement> (:
                             FunctionName = "s.serviceInterface.GetErrorResponse"
                             FunctionArgs = condition -> <FunctionArgs> (:
-                              Expression = makeValueExpr(sendRespCallArgs)
+                              Expression = makeValueExpr(httpStatusString)
                               let errMsgExpr = condition -> <Expression> (:
                                 Expression = makeValueExpr('"Internal server error"')
                               )
@@ -388,7 +389,7 @@ CodeGenTransform:
                             Expression = makeValueExpr("errResp")
                           )
                           let a = condition -> <FuncArgsRest> (:
-                            Expression = makeValueExpr("httpStatus")
+                            Expression = makeValueExpr(httpStatusString)
                           )
                           FuncArgsRest = [a, errRespExpr]
                         )
@@ -402,7 +403,7 @@ CodeGenTransform:
                         FunctionArgs = condition -> <FunctionArgs> (:
                           Expression = makeValueExpr("w")
                           let a = condition -> <FuncArgsRest> (:
-                            Expression = makeValueExpr("httpStatus")
+                            Expression = makeValueExpr(httpStatusString)
                           )
                           let b = condition -> <FuncArgsRest> (:
                             Expression = makeValueExpr(v.value)
@@ -456,7 +457,7 @@ CodeGenTransform:
           )
           let sendResExist = ep -> <Statement> (:
             Statement = ep -> <Statement> (:
-              let values = if ep.value.ret.payload != null then splitPayload(Split("status, " + ep.value.ret.payload, ', ')) else splitReturnTypes(ep.value.ret)
+              let values = if hasNoPayload then splitReturnTypes(ep.value.ret) else splitPayload(Split("status, " + ep.value.ret.payload, ', '))
               FunctionCall = ep -> <Statement> (:
                 FunctionName = "restlib.SendHTTPResponse"
                 FunctionArgs = ep -> <FunctionArgs> (:
@@ -470,7 +471,7 @@ CodeGenTransform:
             )
           )
 
-          let funcCalls =  if ep.value.ret.payload == null then [implCall] | [httpStatus] | [setHeadersCall]| retStatusStatement.StatementList else [implCall] | [setHeadersCall] | [sendResExist]
+          let funcCalls =  if hasNoPayload then [implCall] | [httpStatus] | [setHeadersCall]| retStatusStatement.StatementList else [implCall] | [setHeadersCall] | [sendResExist]
           
           let commonStmtList = getReqVars(allParams).StatementList | validateHeaders(ep)
           let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then commonStmtList | verifyAuthHeaders(ep).StatementList else commonStmtList

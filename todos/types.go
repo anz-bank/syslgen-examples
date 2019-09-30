@@ -16,12 +16,22 @@ var _ = time.Parse
 // Reference imports to suppress unused errors
 var _ = date.Parse
 
+// ErrorResponse ...
+type ErrorResponse struct {
+	Status string `json:"status"`
+}
+
 // Post ...
 type Post struct {
 	Body   string `json:"body"`
 	ID     int64  `json:"id"`
 	Title  string `json:"title"`
 	UserID int64  `json:"userId"`
+}
+
+// ResourceNotFoundError ...
+type ResourceNotFoundError struct {
+	Status string `json:"status"`
 }
 
 // Todo ...
