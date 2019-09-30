@@ -14,14 +14,30 @@ Todos:
   !alias Posts:
     sequence of Post
 
+  !type ErrorResponse:
+    status <: string
+
+  !type ResourceNotFoundError:
+    status <: string
+
   /todos:
     /{id<:int}:
       GET:
-        return Todo
+        if notfound:
+          return 404 <: ResourceNotFoundError
+        else if failed:
+          return 500 <: ErrorResponse
+        else:    
+          return 200 <: Todo
 
   /posts:
     GET:
-      return Posts
+      if notfound:
+        return 404 <: ResourceNotFoundError
+      else if failed:
+        return 500 <: ErrorResponse
+      else:    
+        return 200 <: Posts
 
   /comments:
     GET ?postId=int:

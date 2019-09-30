@@ -50,7 +50,7 @@ func (s *Client) GetComments(ctx context.Context, headers map[string]string, pos
 // GetPosts ...
 func (s *Client) GetPosts(ctx context.Context, headers map[string]string) (*restlib.HTTPResult, error) {
 	required := []string{}
-	responses := []interface{}{&Posts{}}
+	responses := []interface{}{&Posts{}, &ResourceNotFoundError{}, &ErrorResponse{}}
 	u, err := url.Parse(fmt.Sprintf("%s/posts", s.url))
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (s *Client) GetPosts(ctx context.Context, headers map[string]string) (*rest
 // GetTodosID ...
 func (s *Client) GetTodosID(ctx context.Context, headers map[string]string, id int64) (*restlib.HTTPResult, error) {
 	required := []string{}
-	responses := []interface{}{&Todo{}}
+	responses := []interface{}{&Todo{}, &ResourceNotFoundError{}, &ErrorResponse{}}
 	u, err := url.Parse(fmt.Sprintf("%s/todos/%v", s.url, id))
 	if err != nil {
 		return nil, err

@@ -32,24 +32,66 @@ func NewServiceHandler(serviceInterface ServiceInterface) *ServiceHandler {
 // GetCommentsHandler ...
 func (s *ServiceHandler) GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	PostID := restlib.GetQueryParam(r, "postId")
-	httpStatus, headerMap, Posts := s.serviceInterface.GetComments(PostID)
+	Status, headerMap, Posts := s.serviceInterface.GetComments(PostID)
 	restlib.SetHeaders(w, headerMap)
-	restlib.SendHTTPResponse(w, httpStatus, Posts)
+	restlib.SendHTTPResponse(w, Status, Posts)
 }
 
 // GetPostsHandler ...
 func (s *ServiceHandler) GetPostsHandler(w http.ResponseWriter, r *http.Request) {
-	httpStatus, headerMap, Posts := s.serviceInterface.GetPosts()
+	headerMap, Posts, ResourceNotFoundError, ErrorResponse := s.serviceInterface.GetPosts()
+	var httpStatus int
+
 	restlib.SetHeaders(w, headerMap)
-	restlib.SendHTTPResponse(w, httpStatus, Posts)
+	if Posts != nil {
+		httpStatus = 200
+		restlib.SendHTTPResponse(w, httpStatus, Posts)
+		return
+	}
+
+	if ResourceNotFoundError != nil {
+		httpStatus = 404
+		errResp := s.serviceInterface.GetErrorResponse(httpStatus, "Internal server error", nil)
+		restlib.SendHTTPResponse(w, httpStatus, errResp)
+		return
+	}
+
+	if ErrorResponse != nil {
+		httpStatus = 500
+		errResp := s.serviceInterface.GetErrorResponse(httpStatus, "Internal server error", nil)
+		restlib.SendHTTPResponse(w, httpStatus, errResp)
+		return
+	}
+
 }
 
 // GetTodosIDHandler ...
 func (s *ServiceHandler) GetTodosIDHandler(w http.ResponseWriter, r *http.Request) {
 	ID := restlib.GetURLParam(r, "id")
-	httpStatus, headerMap, Todo := s.serviceInterface.GetTodosID(ID)
+	headerMap, Todo, ResourceNotFoundError, ErrorResponse := s.serviceInterface.GetTodosID(ID)
+	var httpStatus int
+
 	restlib.SetHeaders(w, headerMap)
-	restlib.SendHTTPResponse(w, httpStatus, Todo)
+	if Todo != nil {
+		httpStatus = 200
+		restlib.SendHTTPResponse(w, httpStatus, Todo)
+		return
+	}
+
+	if ResourceNotFoundError != nil {
+		httpStatus = 404
+		errResp := s.serviceInterface.GetErrorResponse(httpStatus, "Internal server error", nil)
+		restlib.SendHTTPResponse(w, httpStatus, errResp)
+		return
+	}
+
+	if ErrorResponse != nil {
+		httpStatus = 500
+		errResp := s.serviceInterface.GetErrorResponse(httpStatus, "Internal server error", nil)
+		restlib.SendHTTPResponse(w, httpStatus, errResp)
+		return
+	}
+
 }
 
 // PostCommentsHandler ...
@@ -64,7 +106,7 @@ func (s *ServiceHandler) PostCommentsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	httpStatus, headerMap, Post := s.serviceInterface.PostComments(newPost)
+	Status, headerMap, Post := s.serviceInterface.PostComments(newPost)
 	restlib.SetHeaders(w, headerMap)
-	restlib.SendHTTPResponse(w, httpStatus, Post)
+	restlib.SendHTTPResponse(w, Status, Post)
 }

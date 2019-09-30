@@ -104,6 +104,7 @@ CodeGenTransform:
   !view epHandlerMethodSpecs(eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
     eps -> (ep:
       let allParams = getAllParams(ep)
+      let hasNoPayload = if ep.value.ret.payload == null then true else false
       MethodName = methodDef(ep).methodName
       Signature = ep -> <Signature> (:
         Parameters = ep -> <Parameters>(:
@@ -112,18 +113,27 @@ CodeGenTransform:
           )
         )
         Result = ep -> <Result>(:
-          let resultTypes = Split(ep.value.ret.payload, ', ') -> <sequence of string> (:
-            typeName = '*' + GoName(.).out
-          )
-
-          TypeName = if ep.value.ret.payload == "" then "int, map[string]string" else "(int, map[string]string," + Join(resultTypes flatten(.typeName),", ") + ")"
+          let resultTypes = if hasNoPayload then splitReturnTypes(ep.value.ret) else splitPayload(Split(ep.value.ret.payload, ', ')) 
+          let tempType = if resultTypes count > 0 then "map[string]string, " + Join(resultTypes flatten(.typeName),", ") + ")" else "map[string]string)"
+          TypeName = if hasNoPayload then "(" + tempType else "(int, " + tempType 
         )
       )
+    )
+
+  !view splitPayload(payload <: set of string) -> sequence of string:
+    payload -> (:
+      typeName = '*' + GoName(.).out
+    )
+
+  !view splitReturnTypes(types <: map) -> sequence of string:
+    types -> (v:
+      typeName = '*' + GoName(v.value).out
     )
 
   !view epHandlerMethodDecl(eps <: set of sysl.Endpoints, receiverType <: string) -> TopLevelDecl:
     eps -> (ep:
       let allParams = getAllParams(ep)
+      let hasNoPayload = if ep.value.ret.payload == null then true else false
       let methodName = methodDef(ep).methodName
       Comment = "// nolint:gocritic\n// "  + methodName + " ..."
       MethodDecl = ep -> <MethodDecl>(:
@@ -139,14 +149,11 @@ CodeGenTransform:
             )
           )
           Result = ep -> <Result>(:
-            let resultTypes = Split(ep.value.ret.payload, ', ') -> <sequence of string> (:
-              typeName = '*' + GoName(.).out
-            )
-
-            TypeName = if ep.value.ret.payload == "" then "int, map[string]string" else "(int, map[string]string," + Join(resultTypes flatten(.typeName),", ") + ")"
+            let resultTypes = if hasNoPayload then splitReturnTypes(ep.value.ret) else splitPayload(Split(ep.value.ret.payload, ', ')) 
+            let tempType = if resultTypes count > 0 then "map[string]string, " + Join(resultTypes flatten(.typeName),", ") + ")" else "map[string]string)"
+            TypeName = if hasNoPayload then "(" + tempType else "(int, " + tempType 
           )
         )
-
         Block = panicBlock(methodName)
       )
     )
