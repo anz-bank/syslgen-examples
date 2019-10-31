@@ -128,7 +128,7 @@ CodeGenTransform:
       )
       let terms2 = terms flatten(.out)
       let path = Split(ep.value.path, "/")
-      let path2 = path -> <string> (p:
+      let path2 = path -> <sequence of string> (p:
         out  = if p in terms2 then "%v" else p
       )
       let path3 = path2 flatten(.out)
@@ -229,7 +229,7 @@ CodeGenTransform:
           Expression = typeName -> <Expression> (:
             NewSlice = typeName -> <NewSlice> (:
               TypeName = typeName
-              let v = values -> <sequence of string> (:
+              let v = values -> <string> (:
                 out = '"' + . + '"'
               )
               SliceValues = Join(v flatten(.out), ',')
@@ -326,7 +326,7 @@ CodeGenTransform:
       )
     )
 
-  !view splitPayload(payload <: set of string) -> sequence of string:
+  !view splitPayload(payload <: set of string) -> string:
     payload -> (:
       type = GoName(.).out
     )
@@ -367,7 +367,7 @@ CodeGenTransform:
     ret0 -> (:
       ReturnTypes = ret0 -> <ReturnTypes> (:
         TypeName = ret0
-        ResultTypeList = retN -> <ResultTypeList> (tname:
+        ResultTypeList = retN -> <sequence of ResultTypeList> (tname:
           TypeName = tname
         )
       )
@@ -436,13 +436,13 @@ CodeGenTransform:
 
       ImportDecl = app -> <ImportDecl>(:
         let restLib = "github.com/anz-bank/syslgen-examples/restlib"
-        let spec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/rickb777/date", restLib] -> <ImportSpec> (importPath:
+        let spec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/rickb777/date", restLib] -> <sequence of ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
         ImportSpec = spec
       )
 
-      let svcInterface = [.name] -> <TopLevelDecl> (name:
+      let svcInterface = [.name] -> <sequence of TopLevelDecl> (name:
         let title = "Service"
         Comment = "// Service interface for "  + name
         Declaration = title -> <Declaration>(:
@@ -453,7 +453,7 @@ CodeGenTransform:
         )
       )
       
-      let clientStruct = [.name] -> <TopLevelDecl> (name:
+      let clientStruct = [.name] -> <sequence of TopLevelDecl> (name:
         Comment = "// Client for " + name + " API"
         Declaration = name -> <Declaration>(:
           StructType = name -> <StructType>(:
@@ -474,7 +474,7 @@ CodeGenTransform:
         )
       )
 
-      let makeClient = [.name] -> <TopLevelDecl> (name:
+      let makeClient = [.name] -> <sequence of TopLevelDecl> (name:
         Comment = "// NewClient for " + name
         FunctionDecl = name -> <FunctionDecl>(:
           FunctionName = "NewClient"
@@ -491,7 +491,7 @@ CodeGenTransform:
                   Identifier = "client"
                   TypeName = "*http.Client"
                 )
-                ParameterDeclC = [urlField] -> <ParameterDeclC>(p:
+                ParameterDeclC = [urlField] -> <sequence of ParameterDeclC>(p:
                   ParameterDecl = p -> <ParameterDecl>(:
                     Identifier = p.Identifier
                     TypeName = p.TypeName
@@ -504,8 +504,8 @@ CodeGenTransform:
               TypeName = "*Client"
             )
           )
-          Block = name -> <Block>(item:
-            StatementList = [item] -> <StatementList>(item:
+          Block = name -> <sequence of Block>(item:
+            StatementList = [item] -> <sequence of StatementList>(item:
               Statement = item -> <Statement> (:
                 ReturnStmt = item -> <ReturnStmt> (:
                   PayLoad = "&Client{client, serviceURL}"

@@ -119,7 +119,7 @@ CodeGenTransform:
   !view jsonDecode(bodyParams <: BodyParams, packageName <: string) -> Block:
     packageName -> (:
       let decodeErr = "decodeErr"
-      let decodeStmts = bodyParams -> <StatementList> (param:
+      let decodeStmts = bodyParams -> <sequence of StatementList> (param:
         Statement = param -> <Statement> (:
           DeclareAndAssignStmt = param -> <DeclareAndAssignStmt> (:
             Variables = decodeErr
@@ -150,7 +150,7 @@ CodeGenTransform:
       let path = Split(ep.value.path, "/")
       let method = Title(ToLower(ep.value.method))
 
-      let methodPostfix = path -> <string> (p:
+      let methodPostfix = path -> <sequence of string> (p:
         let postfix  = if p in pathVars then Join(ep.value.pathvars flatten(.name), "") else p
         out = Title(ToLower(postfix))
       )
@@ -209,7 +209,7 @@ CodeGenTransform:
           Expression = typeName -> <Expression> (:
             NewSlice = typeName -> <NewSlice> (:
               TypeName = typeName
-              let v = values -> <sequence of string> (:
+              let v = values -> <string> (:
                 out = '"' + . + '"'
               )
               SliceValues = Join(v flatten(.out), ',')
@@ -238,29 +238,29 @@ CodeGenTransform:
 
   !view getAllParams(ep <: sysl.Endpoint) -> AllParams:
     ep -> (:
-      let queryParams = ep.value.queryvars -> <QueryParams> (param:
+      let queryParams = ep.value.queryvars -> <sequence of QueryParams> (param:
         paramType = ParamType(param).out
         paramName = param.name
         varName = GoName(param.name).out
       )
-      let pathParams = ep.value.pathvars -> <PathParams> (param:
+      let pathParams = ep.value.pathvars -> <sequence of PathParams> (param:
         paramType = ParamType(param).out
         paramName = param.name
         varName = GoName(param.name).out
       )
-      let reqHeaderParams = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> <HeaderParams> (param:
+      let reqHeaderParams = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> <sequence of HeaderParams> (param:
         paramType = ParamType(param).out
         paramName = param.attrs.name
         varName = GoName(param.attrs.name).out
         isOptional = false
       )
-      let optHeaderParams = ep.value.params where("header" in .attrs.patterns && "optional" in .attrs.patterns) -> <HeaderParams> (param:
+      let optHeaderParams = ep.value.params where("header" in .attrs.patterns && "optional" in .attrs.patterns) -> <sequence of HeaderParams> (param:
         paramType = ParamType(param).out
         paramName = param.attrs.name
         varName = GoName(param.attrs.name).out
         isOptional = true
       )
-      let bodyParams = ep.value.params where("body" in .attrs.patterns) -> <BodyParams> (param:
+      let bodyParams = ep.value.params where("body" in .attrs.patterns) -> <sequence of BodyParams> (param:
         paramType = GoName(param.type_ref).out
         paramName = param.name
         varName = param.name
@@ -315,6 +315,7 @@ CodeGenTransform:
       let implFuncName = methodDef(ep).methodName
       let funcName = implFuncName + "Handler"
       let allParams = getAllParams(ep)
+      let hasNoPayload = if ep.value.ret.payload == null then true else false
       Comment = '// ' + funcName + ' ...'
       MethodDecl = ep -> <MethodDecl>(:
         Receiver = ep -> <Receiver>(:
@@ -325,7 +326,7 @@ CodeGenTransform:
           Parameters = ep -> <Parameters>(:
             ParameterList = ep -> <ParameterList>(:
               ParameterDecl = paramDecl("w", "http.ResponseWriter")
-              ParameterDeclC = [ep] -> <ParameterDeclC>(:
+              ParameterDeclC = [ep] -> <sequence of ParameterDeclC>(:
                 ParameterDecl = paramDecl("r", "*http.Request")
               )
             )
@@ -491,7 +492,7 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let spec = ["encoding/json", "net/http", "github.com/anz-bank/syslgen-examples/restlib"] -> <ImportSpec> (importPath:
+        let spec = ["encoding/json", "net/http", "github.com/anz-bank/syslgen-examples/restlib"] -> <sequence of ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
         ImportSpec = spec
@@ -499,7 +500,7 @@ CodeGenTransform:
 
       let serviceImplVarname = "serviceInterface"
 
-      let svcInterface = [.name] -> <TopLevelDecl> (name:
+      let svcInterface = [.name] -> <sequence of TopLevelDecl> (name:
         let title = "Handler"
         Comment = "// Handler interface for "  + name
         Declaration = title -> <Declaration>(:
@@ -510,7 +511,7 @@ CodeGenTransform:
         )
       )
       
-      let serviceHandlerStruct = [.name] -> <TopLevelDecl> (name:
+      let serviceHandlerStruct = [.name] -> <sequence of TopLevelDecl> (name:
         Comment = "// ServiceHandler for " + name + " API"
         Declaration = name -> <Declaration>(:
           StructType = name -> <StructType>(:
@@ -526,7 +527,7 @@ CodeGenTransform:
         )
       )
 
-      let newServiceHandler = [.name] -> <TopLevelDecl> (name:
+      let newServiceHandler = [.name] -> <sequence of TopLevelDecl> (name:
         Comment = "// NewServiceHandler for " + name
         FunctionDecl = name -> <FunctionDecl>(:
           FunctionName = "NewServiceHandler"
@@ -541,8 +542,8 @@ CodeGenTransform:
               TypeName = "*ServiceHandler"
             )
           )
-          Block = name -> <Block>(item:
-            StatementList = [item] -> <StatementList>(item:
+          Block = name -> <sequence of Block>(item:
+            StatementList = [item] -> <sequence of StatementList>(item:
               Statement = item -> <Statement> (:
                 ReturnStmt = item -> <ReturnStmt> (:
                   PayLoad = "&ServiceHandler{" + serviceImplVarname + "}"

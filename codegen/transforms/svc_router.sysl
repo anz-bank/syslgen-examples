@@ -45,7 +45,7 @@ CodeGenTransform:
       let path = Split(ep.value.path, "/")
       let method = Title(ToLower(ep.value.method))
 
-      let methodPostfix = path -> <string> (p:
+      let methodPostfix = path -> <sequence of string> (p:
         let postfix  = if p in pathVars then Join(ep.value.pathvars flatten(.name), "") else p
         out = Title(ToLower(postfix))
       )
@@ -66,7 +66,7 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let spec = ["github.com/go-chi/chi"] -> <ImportSpec> (importPath:
+        let spec = ["github.com/go-chi/chi"] -> <sequence of ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
         ImportSpec = spec
@@ -75,7 +75,7 @@ CodeGenTransform:
       let routerVarname = "router"
       let svcHandlerVarname = "svcHandler"
 
-      let svcInterface = [.name] -> <TopLevelDecl> (name:
+      let svcInterface = [.name] -> <sequence of TopLevelDecl> (name:
         let title = "Router"
         Comment = "// Router interface for "  + name
         Declaration = title -> <Declaration>(:
@@ -100,7 +100,7 @@ CodeGenTransform:
         )
       )
       
-      let serviceRouterStruct = [.name] -> <TopLevelDecl> (name:
+      let serviceRouterStruct = [.name] -> <sequence of TopLevelDecl> (name:
         Comment = "// ServiceRouter for " + name + " API"
         Declaration = name -> <Declaration>(:
           StructType = name -> <StructType>(:
@@ -116,7 +116,7 @@ CodeGenTransform:
         )
       )
 
-      let makeRouter = [.name] -> <TopLevelDecl> (name:
+      let makeRouter = [.name] -> <sequence of TopLevelDecl> (name:
         Comment = "// NewServiceRouter for " + name
         FunctionDecl = name -> <FunctionDecl>(:
           FunctionName = "NewServiceRouter"
@@ -135,8 +135,8 @@ CodeGenTransform:
               TypeName = "*ServiceRouter"
             )
           )
-          Block = name -> <Block>(item:
-            StatementList = [item] -> <StatementList>(item:
+          Block = name -> <sequence of Block>(item:
+            StatementList = [item] -> <sequence of  StatementList>(item:
               Statement = item -> <Statement> (:
                 ReturnStmt = item -> <ReturnStmt> (:
                   PayLoad = "&ServiceRouter{" + svcHandlerVarname + "}"
@@ -147,7 +147,7 @@ CodeGenTransform:
         )
       )
 
-      let routeMethod = [.name] -> <TopLevelDecl> (name:
+      let routeMethod = [.name] -> <sequence of TopLevelDecl> (name:
         let funcName = "Route"
         Comment = '// ' + funcName + ' ...'
         MethodDecl = name -> <MethodDecl>(:
