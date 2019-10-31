@@ -315,7 +315,6 @@ CodeGenTransform:
       let implFuncName = methodDef(ep).methodName
       let funcName = implFuncName + "Handler"
       let allParams = getAllParams(ep)
-      let hasNoPayload = if ep.value.ret.payload == null then true else false
       Comment = '// ' + funcName + ' ...'
       MethodDecl = ep -> <MethodDecl>(:
         Receiver = ep -> <Receiver>(:

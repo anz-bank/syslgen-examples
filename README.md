@@ -42,3 +42,5 @@ Try to run the example like so:
 This client calls the generated service method `GET_todos_id`.
 
 
+## File Organization
+
