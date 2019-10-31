@@ -7,10 +7,10 @@ NamedImport: Name Import;
 TopLevelDecl: Comment '\n' (Declaration | FunctionDecl | MethodDecl);
 Declaration: VarDecl | VarDeclWithVal | ConstDecl | StructType | InterfaceType | AliasDecl;
 StructType : 'type' StructName 'struct' '{\n' FieldDecl* '}\n\n';
-FieldDecl: '\t' identifier Type? Tag? '\n';
+FieldDecl: '\t' identifier (Type | FunctionType)? Tag? '\n';
 IdentifierList: identifier IdentifierListC*;
 IdentifierListC: ',' identifier;
-
+FunctionType: 'func' Signature;
 VarDeclWithVal: 'var' identifier '=' Expression '\n';
 VarDecl: 'var' identifier TypeName '\n';
 ConstDecl: 'const' '(\n'  ConstSpec '\n)\n';
@@ -33,6 +33,7 @@ MethodDecl: 'func' Receiver FunctionName Signature? Block? '\n\n';
 Receiver: '(' ReceiverType ')';
 AliasDecl: 'type' identifier Type? '\n\n';
 
+FuncLitBlock: '{\n'  StatementList* '}';
 Block: '{\n'  StatementList* '}\n';
 StatementList: '\t' Statement '\n';
 Statement: ReturnStmt |  DeclareAndAssignStmt | AssignStmt | IfElseStmt | IncrementVarByStmt | FunctionCall | VarDecl | ForLoop;
@@ -43,7 +44,9 @@ IncrementVarByStmt: Variables '+=' Expression;
 ReturnStmt: 'return' (PayLoad | Expression);
 DeclareAndAssignStmt: Variables ':=' Expression;
 
-Expression: FunctionCall | NewStruct | GetArg |  ValueExpr | NewSlice | Map;
+Expression: FunctionCall | NewStruct | GetArg |  ValueExpr | NewSlice | Map | FunctionLit;
+
+FunctionLit: 'func' Signature FuncLitBlock;
 
 GetArg: LHS '.' RHS;
 NewSlice: '[]' TypeName '{' SliceValues? '}';

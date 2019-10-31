@@ -50,7 +50,7 @@ CodeGenTransform:
       let path = Split(ep.value.path, "/")
       let method = Title(ToLower(ep.value.method))
 
-      let methodPostfix = path -> <string> (p:
+      let methodPostfix = path -> <sequence of string> (p:
         let postfix  = if p in pathVars then Join(ep.value.pathvars flatten(.name), "") else p
         out = Title(ToLower(postfix))
       )
