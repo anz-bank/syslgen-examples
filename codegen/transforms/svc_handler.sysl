@@ -27,12 +27,12 @@ CodeGenTransform:
         else "string"
       out = typeName
     )
-    
+
   !view filename(app <: sysl.App) -> string:
     app -> (:
       filename =  "servicehandler.go"
     )
-    
+
   !view makeValueExpr(strValue <: string) -> Expression:
     strValue -> (:
       ValueExpr = strValue
@@ -115,7 +115,7 @@ CodeGenTransform:
         VarDecl =varDecl(param.paramName, param.paramType)
       )
     )
-    
+
   !view jsonDecode(bodyParams <: BodyParams, packageName <: string) -> Block:
     packageName -> (:
       let decodeErr = "decodeErr"
@@ -141,31 +141,31 @@ CodeGenTransform:
       StatementList = decodeStmts | [handleError(condition, errorCode, errMsg, decodeErr)]
     )
 
-  !view methodDef(ep <: sysl.Endpoint) -> string:
-    ep -> (:
-      let terms = ep.value.pathvars -> <out> (:
+  !view methodDef(endpoint <: sysl.Endpoint) -> string:
+    endpoint -> (:
+      let terms = endpoint.value.pathvars -> <out> (:
         out = "{" + .name + "}"
       )
       let pathVars = terms flatten(.out)
-      let path = Split(ep.value.path, "/")
-      let method = Title(ToLower(ep.value.method))
+      let path = Split(endpoint.value.path, "/")
+      let method = Title(ToLower(endpoint.value.method))
 
       let methodPostfix = path -> <sequence of string> (p:
-        let postfix  = if p in pathVars then Join(ep.value.pathvars flatten(.name), "") else p
+        let postfix  = if p in pathVars then Join(endpoint.value.pathvars flatten(.name), "") else p
         out = Title(ToLower(postfix))
       )
 
       methodName = GoName(method + Join(methodPostfix flatten(.out), "")).out
     )
 
-  !view epHandlerMethodSpecs(eps <: set of sysl.Endpoints) -> sequence of MethodSpec:
-    eps -> (ep:
-      MethodName = methodDef(ep).methodName + "Handler"
-      Signature = ep -> <Signature> (:
-        Parameters = ep -> <Parameters>(:
-          ParameterList = ep -> <ParameterList>(:
+  !view endpointHandlerMethodSpecs(endpoints <: set of sysl.Endpoints) -> sequence of MethodSpec:
+    endpoints -> (endpoint:
+      MethodName = methodDef(endpoint).methodName + "Handler"
+      Signature = endpoint -> <Signature> (:
+        Parameters = endpoint -> <Parameters>(:
+          ParameterList = endpoint -> <ParameterList>(:
             ParameterDecl = paramDecl("w", "http.ResponseWriter")
-            ParameterDeclC = [ep] -> <ParameterDeclC>(:
+            ParameterDeclC = [endpoint] -> <ParameterDecl>(:
               ParameterDecl = paramDecl("r", "*http.Request")
             )
           )
@@ -193,13 +193,13 @@ CodeGenTransform:
       )
     )
 
-  !view validateHeaders(ep <: sysl.Endpoint) -> sequence of StatementList:
-    ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> (param:
+  !view validateHeaders(endpoint <: sysl.Endpoint) -> sequence of StatementList:
+    endpoint.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> (param:
       let condition = GoName(param.attrs.name).out + ' == ""'
       let errorCode = "http.StatusBadRequest"
       let errMsg = '"' + param.attrs.name + ' header length is zero"'
       Statement = handleError(condition, errorCode, errMsg, "nil").Statement
-    )  
+    )
 
   !view declareHeaders(variableName <: string, typeName <: string, values <: sequence of string) -> StatementList:
     typeName -> (:
@@ -214,11 +214,11 @@ CodeGenTransform:
               )
               SliceValues = Join(v flatten(.out), ',')
             )
-          )   
+          )
         )
       )
     )
-  
+
   !view getReqVars(allParams <: AllParams) -> Block:
     allParams -> (:
       let qParamStatements = getParamStatements(allParams.QueryParams, "restlib.GetQueryParam")
@@ -236,31 +236,31 @@ CodeGenTransform:
       StatementList = [decoder] | structVarDecl | jsonDecode
     )
 
-  !view getAllParams(ep <: sysl.Endpoint) -> AllParams:
-    ep -> (:
-      let queryParams = ep.value.queryvars -> <sequence of QueryParams> (param:
+  !view getAllParams(endpoint <: sysl.Endpoint) -> AllParams:
+    endpoint -> (:
+      let queryParams = endpoint.value.queryvars -> <sequence of QueryParams> (param:
         paramType = ParamType(param).out
         paramName = param.name
         varName = GoName(param.name).out
       )
-      let pathParams = ep.value.pathvars -> <sequence of PathParams> (param:
+      let pathParams = endpoint.value.pathvars -> <sequence of PathParams> (param:
         paramType = ParamType(param).out
         paramName = param.name
         varName = GoName(param.name).out
       )
-      let reqHeaderParams = ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> <sequence of HeaderParams> (param:
+      let reqHeaderParams = endpoint.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns) -> <sequence of HeaderParams> (param:
         paramType = ParamType(param).out
         paramName = param.attrs.name
         varName = GoName(param.attrs.name).out
         isOptional = false
       )
-      let optHeaderParams = ep.value.params where("header" in .attrs.patterns && "optional" in .attrs.patterns) -> <sequence of HeaderParams> (param:
+      let optHeaderParams = endpoint.value.params where("header" in .attrs.patterns && "optional" in .attrs.patterns) -> <sequence of HeaderParams> (param:
         paramType = ParamType(param).out
         paramName = param.attrs.name
         varName = GoName(param.attrs.name).out
         isOptional = true
       )
-      let bodyParams = ep.value.params where("body" in .attrs.patterns) -> <sequence of BodyParams> (param:
+      let bodyParams = endpoint.value.params where("body" in .attrs.patterns) -> <sequence of BodyParams> (param:
         paramType = GoName(param.type_ref).out
         paramName = param.name
         varName = param.name
@@ -288,9 +288,9 @@ CodeGenTransform:
         )
       )
     )
-    
-  !view verifyAuthHeaders(ep <: sysl.Endpoint) -> Block:
-    ep -> (:
+
+  !view verifyAuthHeaders(endpoint <: sysl.Endpoint) -> Block:
+    endpoint -> (:
       let condition = '!s.serviceInterface.IsAuthorized(r, Authorization)'
       # Following statement causes gosimple error by golangci-lint
       # let condition = 's.serviceInterface.IsAuthorized(r, Authorization) == false'
@@ -310,42 +310,42 @@ CodeGenTransform:
       typeName = GoName(v.value).out
     )
 
-  !view EpHandlerMethodDecl(eps <: set of sysl.Endpoints, packageName <: string) -> sequence of TopLevelDecl:
-    eps -> (ep:
-      let implFuncName = methodDef(ep).methodName
+  !view EpHandlerMethodDecl(endpoints <: set of sysl.Endpoints, packageName <: string) -> sequence of TopLevelDecl:
+    endpoints -> (endpoint:
+      let implFuncName = methodDef(endpoint).methodName
       let funcName = implFuncName + "Handler"
-      let allParams = getAllParams(ep)
-      let hasNoPayload = if ep.value.ret.payload == null then true else false
+      let allParams = getAllParams(endpoint)
+      let hasNoPayload = if endpoint.value.ret.payload == null then true else false
       Comment = '// ' + funcName + ' ...'
-      MethodDecl = ep -> <MethodDecl>(:
-        Receiver = ep -> <Receiver>(:
+      MethodDecl = endpoint -> <MethodDecl>(:
+        Receiver = endpoint -> <Receiver>(:
           ReceiverType = "s *ServiceHandler"
         )
         FunctionName = funcName
-        Signature = ep -> <Signature> (:
-          Parameters = ep -> <Parameters>(:
-            ParameterList = ep -> <ParameterList>(:
+        Signature = endpoint -> <Signature> (:
+          Parameters = endpoint -> <Parameters>(:
+            ParameterList = endpoint -> <ParameterList>(:
               ParameterDecl = paramDecl("w", "http.ResponseWriter")
-              ParameterDeclC = [ep] -> <sequence of ParameterDeclC>(:
+              ParameterDeclC = [endpoint] -> <sequence of ParameterDeclC>(:
                 ParameterDecl = paramDecl("r", "*http.Request")
               )
             )
           )
         )
         let httpStatusString = "httpStatus"
-        let httpStatus = ep -> <Statement> (:
-          Statement = ep -> <Statement> (:
+        let httpStatus = endpoint -> <Statement> (:
+          Statement = endpoint -> <Statement> (:
             VarDecl = varDecl(httpStatusString, "int")
           )
         )
-        let resultTypes = if hasNoPayload then splitReturnTypes(ep.value.ret) else splitPayload(Split(ep.value.ret.payload, ', '))
+        let resultTypes = if hasNoPayload then splitReturnTypes(endpoint.value.ret) else splitPayload(Split(endpoint.value.ret.payload, ', '))
         let tempReturnValues = if resultTypes count > 0 then "headerMap, " + Join(resultTypes flatten(.typeName),", ") else "headerMap"
         let returnValues = if hasNoPayload then tempReturnValues else "Status, " + tempReturnValues
-    
-        let retStatusStatement = ep -> <StatementList> (:
-          StatementList = ep.value.ret -> <StatementList> (v:
+
+        let retStatusStatement = endpoint -> <StatementList> (:
+          StatementList = endpoint.value.ret -> <StatementList> (v:
             let condition = v.value + " != nil"
-            Statement = ep -> <Statement> (:
+            Statement = endpoint -> <Statement> (:
               IfElseStmt = condition -> <IfElseStmt> (:
                 Expression = makeValueExpr(condition)
                 Block = condition -> <Block> (:
@@ -426,15 +426,15 @@ CodeGenTransform:
             )
           )
         )
-        Block = ep -> <Block>(:
-          let implCall = ep -> <Statement> (:
-            Statement = ep -> <Statement> (:
-              DeclareAndAssignStmt = ep -> <DeclareAndAssignStmt> (:
+        Block = endpoint -> <Block>(:
+          let implCall = endpoint -> <Statement> (:
+            Statement = endpoint -> <Statement> (:
+              DeclareAndAssignStmt = endpoint -> <DeclareAndAssignStmt> (:
                 Variables = returnValues
-                Expression = ep -> <Expression> (:
-                  FunctionCall = ep -> <FunctionCall> (:
+                Expression = endpoint -> <Expression> (:
+                  FunctionCall = endpoint -> <FunctionCall> (:
                     FunctionName = "s.serviceInterface." + implFuncName
-                    FunctionArgs = ep -> <FunctionArgs> (:
+                    FunctionArgs = endpoint -> <FunctionArgs> (:
                       Expression = makeValueExpr(Join(allParams.AllParams, ", "))
                     )
                   )
@@ -442,40 +442,40 @@ CodeGenTransform:
               )
             )
           )
-          let setHeadersCall = ep -> <Statement> (:
-            Statement = ep -> <Statement> (:
-              FunctionCall = ep -> <FunctionCall> (:
+          let setHeadersCall = endpoint -> <Statement> (:
+            Statement = endpoint -> <Statement> (:
+              FunctionCall = endpoint -> <FunctionCall> (:
                 FunctionName = "restlib.SetHeaders"
-                FunctionArgs = ep -> <FunctionArgs> (:
+                FunctionArgs = endpoint -> <FunctionArgs> (:
                   Expression = makeValueExpr("w")
-                  FuncArgsRest = [ep] -> <FuncArgsRest> (:
+                  FuncArgsRest = [endpoint] -> <FuncArgsRest> (:
                     Expression = makeValueExpr("headerMap")
                   )
                 )
               )
             )
           )
-          let sendResExist = ep -> <Statement> (:
-            Statement = ep -> <Statement> (:
-              let values = if hasNoPayload then splitReturnTypes(ep.value.ret) else splitPayload(Split("status, " + ep.value.ret.payload, ', '))
-              FunctionCall = ep -> <Statement> (:
+          let sendResExist = endpoint -> <Statement> (:
+            Statement = endpoint -> <Statement> (:
+              let values = if hasNoPayload then splitReturnTypes(endpoint.value.ret) else splitPayload(Split("status, " + endpoint.value.ret.payload, ', '))
+              FunctionCall = endpoint -> <Statement> (:
                 FunctionName = "restlib.SendHTTPResponse"
-                FunctionArgs = ep -> <FunctionArgs> (:
+                FunctionArgs = endpoint -> <FunctionArgs> (:
                   Expression = makeValueExpr("w")
                   let restParams = values -> <Expression>(v:
                     Expression = makeValueExpr(v.typeName)
                   )
                   FuncArgsRest = restParams
-                ) 
+                )
               )
             )
           )
 
           let funcCalls =  if hasNoPayload then [implCall] | [httpStatus] | [setHeadersCall]| retStatusStatement.StatementList else [implCall] | [setHeadersCall] | [sendResExist]
-          
-          let commonStmtList = getReqVars(allParams).StatementList | validateHeaders(ep)
-          let stmtList = if ep.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then commonStmtList | verifyAuthHeaders(ep).StatementList else commonStmtList
-          StatementList = if ep.value.method ==:
+
+          let commonStmtList = getReqVars(allParams).StatementList | validateHeaders(endpoint)
+          let stmtList = if endpoint.value.params where("header" in .attrs.patterns && "required" in .attrs.patterns && .attrs.name == "Authorization") count > 0 then commonStmtList | verifyAuthHeaders(endpoint).StatementList else commonStmtList
+          StatementList = if endpoint.value.method ==:
             "GET" => stmtList | funcCalls
             "POST" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | funcCalls
             "PUT" => stmtList  | getBodyParams(allParams.BodyParams, packageName).StatementList | funcCalls
@@ -506,17 +506,17 @@ CodeGenTransform:
         Declaration = title -> <Declaration>(:
           InterfaceType = title -> <InterfaceType>(:
             InterfaceName = title
-            MethodSpec =  epHandlerMethodSpecs(app.endpoints)
+            MethodSpec =  endpointHandlerMethodSpecs(app.endpoints)
           )
         )
       )
-      
+
       let serviceHandlerStruct = [.name] -> <sequence of TopLevelDecl> (name:
         Comment = "// ServiceHandler for " + name + " API"
         Declaration = name -> <Declaration>(:
           StructType = name -> <StructType>(:
             StructName = "ServiceHandler"
-            
+
             let svcHandlerField = name -> <FieldDecl>(:
               identifier = serviceImplVarname
               Type = "ServiceInterface"
@@ -537,7 +537,6 @@ CodeGenTransform:
                 ParameterDecl = paramDecl(serviceImplVarname, "ServiceInterface")
               )
             )
-
             Result = name -> <Result> (:
               TypeName = "*ServiceHandler"
             )
@@ -547,6 +546,7 @@ CodeGenTransform:
               Statement = item -> <Statement> (:
                 ReturnStmt = item -> <ReturnStmt> (:
                   PayLoad = "&ServiceHandler{" + serviceImplVarname + "}"
+
                 )
               )
             )
@@ -554,7 +554,8 @@ CodeGenTransform:
         )
       )
 
+
       Comment = "//\n//    THIS IS AUTOGENERATED BY sysl \n//\n"
-      
+
       TopLevelDecl = svcInterface | serviceHandlerStruct | newServiceHandler | EpHandlerMethodDecl(app.endpoints, pname)
     )
