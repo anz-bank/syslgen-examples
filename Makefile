@@ -1,11 +1,8 @@
 .PHONY: all
-all: clean/todos mkdir/todos generate/todos gotools/todos compile
+all: clean/bin generate/todos gotools/todos compile
 
 .PHONY: clean
-clean: clean/todos
-
-.PHONY: mkdir
-mkdir: mkdir/todos
+clean: clean/bin
 
 .PHONY: gotools
 gotools: gotools/todos
@@ -17,17 +14,17 @@ generate: generate/todos
 validate: validate/todos
 
 .PHONY: compile
-compile: todos_client/todos todos_server/todos
+compile: todos_client todos_server
 
 clean/%:
 	-rm $*_client/$*-client
 	-rm $*_server/$*-server
 
-todos_client/%:
-	cd $*_client; go build -o $*-client; cd -
+todos_client:
+	cd cmd/todos_client; go build -o ../../bin/client *.go; cd -
 
-todos_server/%:
-	cd $*_server; go build -o $*-server; cd -
+todos_server:
+	cd cmd/todos_server; go build -o ../../bin/server *.go; cd -
 
 mkdir/%:
 	echo "creating output dir" $*

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/anz-bank/syslgen-examples/todos"
+	"github.com/anz-bank/syslgen-examples/gen/todos"
 	"net/http"
 	"net/http/httptrace"
 )

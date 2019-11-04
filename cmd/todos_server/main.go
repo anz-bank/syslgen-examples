@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 
-	impl "github.com/anz-bank/syslgen-examples/todos-impl"
+	"github.com/go-chi/chi"
 
-	"github.com/anz-bank/syslgen-examples/todos"
+	impl "github.com/anz-bank/syslgen-examples/pkg/todos-impl"
+
+	"github.com/anz-bank/syslgen-examples/gen/todos"
 )
 
 func main() {

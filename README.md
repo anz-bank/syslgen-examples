@@ -44,3 +44,34 @@ This client calls the generated service method `GET_todos_id`.
 
 ## File Organization
 
+All the files required for code generation using SYSLGEN are in codegen.
+
+### Grammars
+
+Grammars define what code looks like in various languages.
+
+The grammar definition for sysl is in [codegen/grammars/go.gen.sysl](codegen/grammars/go.gen.sysl)
+The sysl grammar defines types used in the transform files.
+
+The grammar definition for go is in [codegen/grammars/go.gen.g](codegen/grammars/go.gen.g)
+This defines what the output files should look like.
+
+### Model
+
+This is a description of the application's endpoints and data types
+
+### Transforms
+
+For each file that we want to generate, we need a transform.
+
+Transform files start with a toplevel declaration of CodeGenTransform followed by a number of view declarations.
+
+```
+CodeGenTransform:
+  !view filename(app <: sysl.App) -> string:
+    app -> (:
+      filename =  "service.go"
+    )
+```
+
+Output files are produced in gen
