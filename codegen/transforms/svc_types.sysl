@@ -91,7 +91,7 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let restLib = "github.com/anz-bank/syslgen-examples/restlib"
+        let restLib = "github.com/anz-bank/syslgen-examples/pkg/restlib"
         let spec = ["context", "fmt", "net/http", "net/url", "time", "", "github.com/rickb777/date", restLib] -> <sequence of ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
