@@ -11,6 +11,8 @@ import (
 	"github.com/anz-bank/syslgen-examples/gen/todos"
 )
 
+const serverPort = ":8080"
+
 func main() {
 	serviceImpl := impl.NewServiceImpl()
 	svcHandler := todos.NewServiceHandler(serviceImpl)
@@ -18,5 +20,6 @@ func main() {
 	router := chi.NewRouter()
 	serviceRouter.Route(router)
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Println("Starting Server on localhost" + serverPort)
+	log.Fatal(http.ListenAndServe(serverPort, router))
 }

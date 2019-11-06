@@ -1,5 +1,5 @@
 .PHONY: all
-all: clean compile
+all: clean generate compile
 
 # Generate doesn't run automatically on make all. It can be run manually via make generate
 .PHONY: generate

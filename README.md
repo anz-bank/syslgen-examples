@@ -1,17 +1,24 @@
 # SYSLGEN Examples
 
-Examples of rest api code generation using `syslgen`.
+This is an example repo showing the generation of REST API client and server code using`syslgen`.
+The example application consists an API Server that stores tasks, and a client CLI tool that makes API calls to the server.
 
-See `examples/todos.sysl` for the rest api description that has been created for the following service : `http://jsonplaceholder.typicode.com/`
+See `codegen/model/todos.sysl` for the rest api description
 
-## How to build code
+## Getting Started
 
-### Get syslgen binary
 
-`syslgen` is expected to be available as a download in near future.
+### Get Syslgen
 
-Currently the only way to get syslgen binary is by building it like so:
+#### Download Binary
 
+`syslgenv0.2.8` can be downloaded as a binary from [https://github.com/anz-bank/sysl/releases/tag/v0.2.8](https://github.com/anz-bank/sysl/releases/tag/v0.2.8)
+
+You can then add it to your PATH using `sudo ln -s <absolute-path-to-gosysl-binary> /usr/local/bin/syslgen`
+
+#### Build from Source
+
+To get the latest version, you can also download and build the binary like so:
 Assumes you have Go installed.
 ```
 export GOPATH=$HOME/gopath
@@ -24,27 +31,40 @@ go get -t -v github.com/anz-bank/sysl/sysl2/sysl
 go install -v
 ln -s $GOPATH/bin/sysl syslgen
 ```
-### Build code
+
+### Build Example Code
 
 Checkout the code and run the following commands in the root of the repository.
 
 ```bash
 make
 ```
-The make command will generate `todos/service.go` and build the binary `todos/todos`
+The make command will generate the following fiiles
 
-Try to run the example like so:
+- [./gen/todos/service.go](./gen/todos/service.go)
+- [./gen/todos/requestrouter.go](./gen/todos/requestrouter.go)
+- [./gen/todos/servicehandler.go](./gen/todos/servicehandler.go)
+- [./gen/todos/serviceinterface.go](./gen/todos/serviceinterface.go)
+- [./gen/todos/types.go](./gen/todos/types.go)
+
+and build the binaries `bin/client` and `bin/server`
+
+### Running the example applications
+
+Try to run the server like so:
 
 ```
-./todos/todos
+./bin/server
+```
+
+We can then use the client like so:
+```
+./bin/client posts
 ```
 
 This client calls the generated service method `GET_todos_id`.
 
-
-## File Organization
-
-All the files required for code generation using SYSLGEN are in codegen.
+## Developing
 
 ### Grammars
 
@@ -74,4 +94,4 @@ CodeGenTransform:
     )
 ```
 
-Output files are produced in gen
+A view declaration is similar to a virtual table, and can be thought of as a function. 

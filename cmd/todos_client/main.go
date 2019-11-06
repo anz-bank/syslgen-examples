@@ -8,6 +8,7 @@ import (
 	"net/http/httptrace"
 
 	"github.com/anz-bank/syslgen-examples/gen/todos"
+	"github.com/anz-bank/syslgen-examples/pkg/restlib"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -39,6 +40,14 @@ func prettyPrint(i interface{}) string {
 	return string(s)
 }
 
+func printResult(result *restlib.HTTPResult, err error) {
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+	} else {
+		fmt.Printf("Status: %d\nValue: \n%+v\n", result.HTTPResponse.StatusCode, prettyPrint(result.Response))
+	}
+}
+
 func main() {
 	httpClient := http.Client{}
 	client := todos.NewClient(&httpClient, "http://localhost:8080")
@@ -48,19 +57,11 @@ func main() {
 	switch kingpin.Parse() {
 	case "todo":
 		result, err := client.GetTodosID(withTrace(ctx), map[string]string{}, *todoID)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err.Error())
-		} else {
-			fmt.Printf("Status: %d\nValue: \n%+v\n", result.HTTPResponse.StatusCode, prettyPrint(result.Response))
-		}
+		printResult(result, err)
 	case "posts":
 		// List all posts
 		result, err := client.GetPosts(withTrace(ctx), map[string]string{})
-		if err != nil {
-			fmt.Printf("Error: %s\n", err.Error())
-		} else {
-			fmt.Printf("Status: %d\nValue: \n%+v\n", result.HTTPResponse.StatusCode, prettyPrint(result.Response))
-		}
+		printResult(result, err)
 	case "comment":
 		post := todos.Post{
 			ID:     1,
@@ -69,11 +70,7 @@ func main() {
 			UserID: 4,
 		}
 		result, err := client.PostComments(withTrace(ctx), map[string]string{}, &post)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err.Error())
-		} else {
-			fmt.Printf("Status: %d\nValue: \n%+v\n", result.HTTPResponse.StatusCode, prettyPrint(result.Response))
-		}
+		printResult(result, err)
 	}
 
 }
