@@ -59,7 +59,6 @@ func main() {
 		result, err := client.GetTodosID(withTrace(ctx), map[string]string{}, *todoID)
 		printResult(result, err)
 	case "posts":
-		// List all posts
 		result, err := client.GetPosts(withTrace(ctx), map[string]string{})
 		printResult(result, err)
 	case "comment":

@@ -57,12 +57,21 @@ Try to run the server like so:
 ./bin/server
 ```
 
-We can then use the client like so:
+We can then use the client to retrieve all posts:
 ```
 ./bin/client posts
 ```
 
-This client calls the generated service method `GET_todos_id`.
+
+We can also create a post:
+```
+./bin/client comment test1234 test
+```
+
+For more information try the following:
+```
+./bin/client --help
+```
 
 ## Developing
 
@@ -94,4 +103,8 @@ CodeGenTransform:
     )
 ```
 
-A view declaration is similar to a virtual table, and can be thought of as a function. 
+A view declaration is similar to a virtual table, and can be likened to a function. The key ones to pay attention to are:
+
+- goFile View
+  - This view controls what goes into the generated go file
+  - Can think of this as the main function
