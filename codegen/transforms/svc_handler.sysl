@@ -301,8 +301,8 @@ CodeGenTransform:
     )
 
   !view splitPayload(payload <: set of string) -> sequence of string:
-    payload -> (:
-      typeName = GoName(.).out
+    payload -> (p:
+      typeName = GoName(p).out
     )
 
   !view splitReturnTypes(types <: map) -> sequence of string:
@@ -310,7 +310,7 @@ CodeGenTransform:
       typeName = GoName(v.value).out
     )
 
-  !view EpHandlerMethodDecl(endpoints <: set of sysl.Endpoints, packageName <: string) -> sequence of TopLevelDecl:
+  !view epHandlerMethodDecl(endpoints <: set of sysl.Endpoints, packageName <: string) -> sequence of TopLevelDecl:
     endpoints -> (endpoint:
       let implFuncName = methodDef(endpoint).methodName
       let funcName = implFuncName + "Handler"
@@ -326,14 +326,14 @@ CodeGenTransform:
           Parameters = endpoint -> <Parameters>(:
             ParameterList = endpoint -> <ParameterList>(:
               ParameterDecl = paramDecl("w", "http.ResponseWriter")
-              ParameterDeclC = [endpoint] -> <sequence of ParameterDeclC>(:
+              ParameterDeclC = [endpoint] -> <ParameterDeclC>(:
                 ParameterDecl = paramDecl("r", "*http.Request")
               )
             )
           )
         )
         let httpStatusString = "httpStatus"
-        let httpStatus = endpoint -> <Statement> (:
+        let httpStatus = endpoint -> <StatementList> (:
           Statement = endpoint -> <Statement> (:
             VarDecl = varDecl(httpStatusString, "int")
           )
@@ -342,14 +342,14 @@ CodeGenTransform:
         let tempReturnValues = if resultTypes count > 0 then "headerMap, " + Join(resultTypes flatten(.typeName),", ") else "headerMap"
         let returnValues = if hasNoPayload then tempReturnValues else "Status, " + tempReturnValues
 
-        let retStatusStatement = endpoint -> <StatementList> (:
-          StatementList = endpoint.value.ret -> <StatementList> (v:
+        let retStatusStatement = endpoint -> <Block> (:
+          StatementList = endpoint.value.ret -> <sequence of StatementList> (v:
             let condition = v.value + " != nil"
             Statement = endpoint -> <Statement> (:
               IfElseStmt = condition -> <IfElseStmt> (:
                 Expression = makeValueExpr(condition)
                 Block = condition -> <Block> (:
-                  let sendStatus = condition -> <Statement> (:
+                  let sendStatus = condition -> <StatementList> (:
                     Statement = condition -> <Statement> (:
                       AssignStmt = condition -> <AssignStmt> (:
                         Variables = httpStatusString
@@ -357,7 +357,7 @@ CodeGenTransform:
                       )
                     )
                   )
-                  let errorRes = condition -> <Statement> (:
+                  let errorRes = condition -> <StatementList> (:
                     Statement = condition -> <Statement> (:
                       DeclareAndAssignStmt = condition -> <DeclareAndAssignStmt> (:
                         Variables = "errResp"
@@ -366,10 +366,10 @@ CodeGenTransform:
                             FunctionName = "s.serviceInterface.GetErrorResponse"
                             FunctionArgs = condition -> <FunctionArgs> (:
                               Expression = makeValueExpr(httpStatusString)
-                              let errMsgExpr = condition -> <Expression> (:
+                              let errMsgExpr = condition -> <FuncArgsRest> (:
                                 Expression = makeValueExpr('"Internal server error"')
                               )
-                              let errObjExpr = condition -> <Expression> (:
+                              let errObjExpr = condition -> <FuncArgsRest> (:
                                 Expression = makeValueExpr("nil")
                               )
                               FuncArgsRest = [errMsgExpr, errObjExpr]
@@ -379,13 +379,13 @@ CodeGenTransform:
                       )
                     )
                   )
-                  let sendResErr = condition -> <Statement> (:
+                  let sendResErr = condition -> <StatementList> (:
                     Statement = condition -> <Statement> (:
                       FunctionCall = condition -> <Statement> (:
                         FunctionName = "restlib.SendHTTPResponse"
                         FunctionArgs = condition -> <FunctionArgs> (:
                           Expression = makeValueExpr("w")
-                          let errRespExpr = condition -> <Expression> (:
+                          let errRespExpr = condition -> <FuncArgsRest> (:
                             Expression = makeValueExpr("errResp")
                           )
                           let a = condition -> <FuncArgsRest> (:
@@ -396,7 +396,7 @@ CodeGenTransform:
                       )
                     )
                   )
-                  let sendRes = condition -> <Statement> (:
+                  let sendRes = condition -> <StatementList> (:
                     Statement = condition -> <Statement> (:
                       FunctionCall = condition -> <Statement> (:
                         FunctionName = "restlib.SendHTTPResponse"
@@ -413,7 +413,7 @@ CodeGenTransform:
                       )
                     )
                   )
-                  let retStatement = condition -> <Statement> (:
+                  let retStatement = condition -> <StatementList> (:
                     Statement = condition -> <Statement> (:
                       ReturnStmt = condition -> <ReturnStmt> (:
                         PayLoad = ""
@@ -427,7 +427,7 @@ CodeGenTransform:
           )
         )
         Block = endpoint -> <Block>(:
-          let implCall = endpoint -> <Statement> (:
+          let implCall = endpoint -> <StatementList> (:
             Statement = endpoint -> <Statement> (:
               DeclareAndAssignStmt = endpoint -> <DeclareAndAssignStmt> (:
                 Variables = returnValues
@@ -442,7 +442,7 @@ CodeGenTransform:
               )
             )
           )
-          let setHeadersCall = endpoint -> <Statement> (:
+          let setHeadersCall = endpoint -> <StatementList> (:
             Statement = endpoint -> <Statement> (:
               FunctionCall = endpoint -> <FunctionCall> (:
                 FunctionName = "restlib.SetHeaders"
@@ -455,17 +455,16 @@ CodeGenTransform:
               )
             )
           )
-          let sendResExist = endpoint -> <Statement> (:
+          let sendResExist = endpoint -> <StatementList> (:
             Statement = endpoint -> <Statement> (:
               let values = if hasNoPayload then splitReturnTypes(endpoint.value.ret) else splitPayload(Split("status, " + endpoint.value.ret.payload, ', '))
               FunctionCall = endpoint -> <Statement> (:
                 FunctionName = "restlib.SendHTTPResponse"
                 FunctionArgs = endpoint -> <FunctionArgs> (:
                   Expression = makeValueExpr("w")
-                  let restParams = values -> <Expression>(v:
+                  FuncArgsRest = values -> <sequence of Expression>(v:
                     Expression = makeValueExpr(v.typeName)
                   )
-                  FuncArgsRest = restParams
                 )
               )
             )
@@ -492,7 +491,7 @@ CodeGenTransform:
       )
 
       ImportDecl = app -> <ImportDecl>(:
-        let spec = ["encoding/json", "net/http", "github.com/anz-bank/syslgen-examples/restlib"] -> <sequence of ImportSpec> (importPath:
+        let spec = ["encoding/json", "net/http", "github.com/anz-bank/syslgen-examples/pkg/restlib"] -> <sequence of ImportSpec> (importPath:
           Import = if importPath == "" then true else '"' + importPath + '"'
         )
         ImportSpec = spec
@@ -557,5 +556,5 @@ CodeGenTransform:
 
       Comment = "//\n//    THIS IS AUTOGENERATED BY sysl \n//\n"
 
-      TopLevelDecl = svcInterface | serviceHandlerStruct | newServiceHandler | EpHandlerMethodDecl(app.endpoints, pname)
+      TopLevelDecl = svcInterface | serviceHandlerStruct | newServiceHandler | epHandlerMethodDecl(app.endpoints, pname)
     )
