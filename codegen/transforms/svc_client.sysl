@@ -32,7 +32,7 @@ CodeGenTransform:
 
   !view filename(app <: sysl.App) -> string:
     app -> (:
-      filename =  "service.go"
+      filename =  "serviceClient.go"
     )
 
   !view GoInterfaces(unions <: set of Type) -> sequence of TopLevelDecl:

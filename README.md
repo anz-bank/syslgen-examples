@@ -41,6 +41,10 @@ ln -s $GOPATH/bin/sysl syslgen
 
 ### Build Example Code
 
+##### Prerequisites
+
+- GoImports
+
 Checkout the code and run the following commands in the root of the repository.
 
 ```bash

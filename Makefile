@@ -6,20 +6,21 @@ all: clean generate compile
 generate: generate/todos
 
 .PHONY: compile
-compile: todos_client todos_server
+compile: todosClient todosServer
 
 .PHONY: clean
 clean:
 	-rm bin/client
 	-rm bin/server
+	-rm gen/todos/*.go
 
-.PHONY: todos_client
-todos_client:
-	go build -o ./bin/client cmd/todos_client/*.go
+.PHONY: todosClient
+todosClient:
+	go build -o ./bin/client cmd/todosClient/*.go
 
-.PHONY: todos_server
-todos_server:
-	go build -o ./bin/server cmd/todos_server/*.go
+.PHONY: todosServer
+todosServer:
+	go build -o ./bin/server cmd/todosServer/*.go
 
 generate/%:
 	cd codegen && ./generate.sh

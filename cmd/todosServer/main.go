@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi"
 
-	impl "github.com/anz-bank/syslgen-examples/pkg/todos-impl"
+	impl "github.com/anz-bank/syslgen-examples/pkg/todosImpl"
 
 	"github.com/anz-bank/syslgen-examples/gen/todos"
 )

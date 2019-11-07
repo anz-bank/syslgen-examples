@@ -13,7 +13,7 @@ CodeGenTransform:
     )
   !view filename(app <: sysl.App) -> string:
     app -> (:
-      filename =  "requestrouter.go"
+      filename =  "requestRouter.go"
     )
     
   !view makeValueExpr(strValue <: string) -> Expression:

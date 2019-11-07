@@ -30,7 +30,7 @@ CodeGenTransform:
 
   !view filename(app <: sysl.App) -> string:
     app -> (:
-      filename =  "servicehandler.go"
+      filename =  "serviceHandler.go"
     )
 
   !view makeValueExpr(strValue <: string) -> Expression:

@@ -38,7 +38,7 @@ CodeGenTransform:
 
   !view filename(app <: sysl.App) -> string:
     app -> (:
-      filename =  "serviceinterface.go"
+      filename =  "serviceInterface.go"
     )
         
   !view methodDef(ep <: sysl.Endpoint) -> string:

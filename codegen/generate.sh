@@ -2,6 +2,7 @@
 
 set -e -x
 
+SYSLGEN="syslgen"
 TRANSFORMS="transforms"
 GRAMMAR="grammars/go.gen.g"
 START="goFile"
