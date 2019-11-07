@@ -1,12 +1,11 @@
 # SYSLGEN Examples
 
-This is an example repo showing the generation of REST API client and server code using`syslgen`.
+This is an example repo showing the generation of REST API client and server code using `syslgen`.
 The example application consists an API Server that stores tasks, and a client CLI tool that makes API calls to the server.
 
-See `codegen/model/todos.sysl` for the rest api description
+See [codegen/model/todos.sysl](codegen/model/todos.sysl) for the REST API description
 
 ## Getting Started
-
 
 ### Get Syslgen
 
@@ -14,7 +13,11 @@ See `codegen/model/todos.sysl` for the rest api description
 
 `syslgenv0.2.8` can be downloaded as a binary from [https://github.com/anz-bank/sysl/releases/tag/v0.2.8](https://github.com/anz-bank/sysl/releases/tag/v0.2.8)
 
-You can then add it to your PATH using `sudo ln -s <absolute-path-to-gosysl-binary> /usr/local/bin/syslgen`
+You can then add it to your PATH using
+
+```bash
+sudo ln -s <absolute-path-to-gosysl-binary> /usr/local/bin/syslgen
+```
 
 #### Build from Source
 
@@ -39,7 +42,8 @@ Checkout the code and run the following commands in the root of the repository.
 ```bash
 make
 ```
-The make command will generate the following fiiles
+
+The make command will generate the following files
 
 - [./gen/todos/service.go](./gen/todos/service.go)
 - [./gen/todos/requestrouter.go](./gen/todos/requestrouter.go)
@@ -53,23 +57,25 @@ and build the binaries `bin/client` and `bin/server`
 
 Try to run the server like so:
 
-```
+``` bash
 ./bin/server
 ```
 
 We can then use the client to retrieve all posts:
-```
+
+``` bash
 ./bin/client posts
 ```
 
-
 We can also create a post:
-```
+
+``` bash
 ./bin/client comment test1234 test
 ```
 
 For more information try the following:
-```
+
+``` bash
 ./bin/client --help
 ```
 

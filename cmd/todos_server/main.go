@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 
@@ -11,7 +12,7 @@ import (
 	"github.com/anz-bank/syslgen-examples/gen/todos"
 )
 
-const serverPort = ":8080"
+const defaultServerAddress = "localhost:8080"
 
 func main() {
 	serviceImpl := impl.NewServiceImpl()
@@ -20,6 +21,10 @@ func main() {
 	router := chi.NewRouter()
 	serviceRouter.Route(router)
 
-	log.Println("Starting Server on localhost" + serverPort)
-	log.Fatal(http.ListenAndServe(serverPort, router))
+	var serverAddress string
+	flag.StringVar(&serverAddress, "p", defaultServerAddress, "Specify server address")
+	flag.Parse()
+
+	log.Println("Starting Server on " + serverAddress)
+	log.Fatal(http.ListenAndServe(serverAddress, router))
 }

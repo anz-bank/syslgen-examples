@@ -36,7 +36,11 @@ func withTrace(ctx context.Context) context.Context {
 }
 
 func prettyPrint(i interface{}) string {
-	s, _ := json.MarshalIndent(i, "", "\t")
+	s, err := json.MarshalIndent(i, "", "\t")
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		return ""
+	}
 	return string(s)
 }
 
@@ -52,15 +56,14 @@ func main() {
 	httpClient := http.Client{}
 	client := todos.NewClient(&httpClient, "http://localhost:8080")
 	ctx, cancel := context.WithCancel(context.Background())
+	ctx = withTrace(ctx)
 	defer cancel()
 
 	switch kingpin.Parse() {
 	case "todo":
-		result, err := client.GetTodosID(withTrace(ctx), map[string]string{}, *todoID)
-		printResult(result, err)
+		printResult(client.GetTodosID(ctx, nil, *todoID))
 	case "posts":
-		result, err := client.GetPosts(withTrace(ctx), map[string]string{})
-		printResult(result, err)
+		printResult(client.GetPosts(ctx, nil))
 	case "comment":
 		post := todos.Post{
 			ID:     1,
@@ -68,8 +71,7 @@ func main() {
 			Title:  *commentTitle,
 			UserID: 4,
 		}
-		result, err := client.PostComments(withTrace(ctx), map[string]string{}, &post)
-		printResult(result, err)
+		printResult(client.PostComments(ctx, nil, &post))
 	}
 
 }
