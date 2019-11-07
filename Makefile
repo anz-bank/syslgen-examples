@@ -1,65 +1,26 @@
 .PHONY: all
-all: clean/todos mkdir/todos generate/todos gotools/todos compile
+all: clean generate compile
 
-.PHONY: clean
-clean: clean/todos
-
-.PHONY: mkdir
-mkdir: mkdir/todos
-
-.PHONY: gotools
-gotools: gotools/todos
-
+# Generate doesn't run automatically on make all. It can be run manually via make generate
 .PHONY: generate
 generate: generate/todos
 
-.PHONY: validate
-validate: validate/todos
-
 .PHONY: compile
-compile: todos_client/todos todos_server/todos
+compile: todosClient todosServer
 
-SYSLGEN=$(GOPATH)/bin/syslgen
-TYPES_TRANSFORM = transforms/svc_types.sysl
-CLIENT_TRANSFORM = transforms/svc_client.sysl
-INTERFACE_TRANSFORM = transforms/svc_interface.sysl
-HANDLER_TRANSFORM = transforms/svc_handler.sysl
-ROUTER_TRANSFORM = transforms/svc_router.sysl
-GRAMMAR = grammars/go.gen.g
-TYPES_TRANSFORM_INPUT = $(TYPES_TRANSFORM) $(GRAMMAR)
+.PHONY: clean
+clean:
+	-rm bin/client
+	-rm bin/server
+	-rm gen/todos/*.go
 
-gen = $(SYSLGEN) gen --root-model . --root-transform . --transform $(1) --model examples/$(2).sysl --grammar $(GRAMMAR) --start goFile --outdir $(2)
-validate = $(SYSLGEN) validate --grammar $(GRAMMAR) --start goFile --root-transform . --transform $(1)
+.PHONY: todosClient
+todosClient:
+	go build -o ./bin/client cmd/todosClient/*.go
 
-clean/%:
-	-rm $*_client/$*-client
-	-rm $*_server/$*-server
-
-todos_client/%:
-	cd $*_client; go build -o $*-client; cd -
-
-todos_server/%:
-	cd $*_server; go build -o $*-server; cd -
-
-mkdir/%:
-	echo "creating output dir" $*
-	-mkdir -p $*
-
-gotools/%:
-	gofmt -w $*/
-	goimports -w $*/
-	golangci-lint run $*
+.PHONY: todosServer
+todosServer:
+	go build -o ./bin/server cmd/todosServer/*.go
 
 generate/%:
-	$(call gen,$(TYPES_TRANSFORM),$*)
-	$(call gen,$(CLIENT_TRANSFORM),$*)
-	$(call gen,$(INTERFACE_TRANSFORM),$*)
-	$(call gen,$(HANDLER_TRANSFORM),$*)
-	$(call gen,$(ROUTER_TRANSFORM),$*)
-
-validate/%:
-	$(call validate,$(TYPES_TRANSFORM),$*)
-	$(call validate,$(CLIENT_TRANSFORM),$*)
-	$(call validate,$(INTERFACE_TRANSFORM),$*)
-	$(call validate,$(HANDLER_TRANSFORM),$*)
-	$(call validate,$(ROUTER_TRANSFORM),$*)
+	cd codegen && ./generate.sh

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/anz-bank/syslgen-examples/todos"
+	"github.com/anz-bank/syslgen-examples/gen/todos"
 )
 
 // ServiceImpl for Todos API
@@ -28,20 +28,20 @@ func (s *ServiceImpl) GetComments(postID string) (int, map[string]string, *todos
 	return http.StatusOK, headers, &retValues
 }
 
-func (s *ServiceImpl) GetPosts() (int, map[string]string, *todos.Posts) {
+func (s *ServiceImpl) GetPosts() (map[string]string, *todos.Posts, *todos.ResourceNotFoundError, *todos.ErrorResponse) {
 	headers := map[string]string{}
-	return http.StatusOK, headers, &PostList
+	return headers, &PostList, nil, nil
 }
 
-func (s *ServiceImpl) GetTodosID(id string) (int, map[string]string, *todos.Todo) {
+func (s *ServiceImpl) GetTodosID(id string) (map[string]string, *todos.Todo, *todos.ResourceNotFoundError, *todos.ErrorResponse) {
 	headers := map[string]string{}
 	for _, todo := range Todos {
 		if strconv.Itoa(int(todo.ID)) == id {
-			return http.StatusOK, headers, &todo
+			return headers, &todo, nil, nil
 		}
 	}
 
-	return http.StatusNotFound, headers, nil
+	return headers, nil, nil, nil
 }
 
 func (s *ServiceImpl) PostComments(newPost todos.Post) (int, map[string]string, *todos.Post) {

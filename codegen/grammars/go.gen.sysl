@@ -46,9 +46,16 @@ Go:
     StructName <: string
     FieldDecl <: sequence of FieldDecl?
 
+  !alias Type:
+    string
+
+  !union __FieldDecl_Type:
+    Type
+    FunctionType
+
   !type FieldDecl:
     identifier <: string
-    Type <: string?
+    __FieldDecl_Type <: __FieldDecl_Type?
     Tag <: string?
 
   !type IdentifierList:
@@ -133,6 +140,9 @@ Go:
   !type MethodSpec:
     __Choice_MethodSpec <: __Choice_MethodSpec
 
+  !type FunctionType:
+    Signature <: Signature
+
   !type MethodDecl:
     Receiver <: Receiver
     FunctionName <: string
@@ -147,6 +157,9 @@ Go:
     Type <: string?
 
   !type Block:
+    StatementList <: sequence of StatementList?
+
+  !type FuncLitBlock:
     StatementList <: sequence of StatementList?
 
   !type StatementList:
@@ -201,6 +214,11 @@ Go:
     ValueExpr
     NewSlice
     Map
+    FunctionLit
+
+  !type FunctionLit:
+    Signature <: Signature
+    FuncLitBlock <: FuncLitBlock
 
   !type Expression:
     __Choice_Expression <: __Choice_Expression

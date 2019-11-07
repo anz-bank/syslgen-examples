@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/anz-bank/syslgen-examples/restlib"
+	"github.com/anz-bank/syslgen-examples/pkg/restlib"
 )
 
 // Service interface for Todos

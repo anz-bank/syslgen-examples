@@ -1,6 +1,6 @@
 package todosimpl
 
-import "github.com/anz-bank/syslgen-examples/todos"
+import "github.com/anz-bank/syslgen-examples/gen/todos"
 
 // PostList ...
 var PostList = todos.Posts{
