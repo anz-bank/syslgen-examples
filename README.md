@@ -22,8 +22,12 @@ sudo ln -s <absolute-path-to-gosysl-binary> /usr/local/bin/syslgen
 #### Build from Source
 
 To get the latest version, you can also download and build the binary like so:
-Assumes you have Go installed.
-```
+
+##### Prerequisites
+
+- Go 1.13
+
+``` bash
 export GOPATH=$HOME/gopath
 export SYSLBASE=$HOME/gopath/src/github.com/anz-bank
 mkdir -p $SYSLBASE
@@ -101,7 +105,7 @@ For each file that we want to generate, we need a transform.
 
 Transform files start with a toplevel declaration of CodeGenTransform followed by a number of view declarations.
 
-```
+``` yaml
 CodeGenTransform:
   !view filename(app <: sysl.App) -> string:
     app -> (:
